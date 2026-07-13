@@ -53,7 +53,14 @@ async function getGmailClient(env) {
 
 function buildQuery(emails, startDate, companyKey) {
   const labelName = (!companyKey || companyKey === "USA") ? "forest-bills-done" : `forest-bills-${companyKey.toLowerCase()}-done`;
-  return [`from:(${emails.join(" OR ")})`, "has:attachment", "filename:pdf", `-label:${labelName}`, `after:${startDate || "2026/04/07"}`].join(" ");
+  // Cap the scan window to the last 10 days: with only startDate the window grew forever
+  // and high-volume companies hit too many matches, so new invoices stopped coming in.
+  // startDate still wins if it's more recent than 10 days ago (e.g. a newly onboarded company).
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 10);
+  const startTs = Date.parse((startDate || "2026/04/07").replace(/\//g, "-"));
+  const after = (startTs && startTs > cutoff.getTime()) ? new Date(startTs) : cutoff;
+  const afterStr = `${after.getFullYear()}/${String(after.getMonth() + 1).padStart(2, "0")}/${String(after.getDate()).padStart(2, "0")}`;
+  return [`from:(${emails.join(" OR ")})`, "has:attachment", "filename:pdf", `-label:${labelName}`, `after:${afterStr}`].join(" ");
 }
 
 async function getPDFAttachments(gmail, messageId) {
