@@ -1,0 +1,29 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions."process-bill"]
+  timeout = 26
+
+[functions."scan-gmail"]
+  schedule = "0 8 * * *"
+  timeout = 26
+
+[functions."fetch-bills"]
+  timeout = 26
+
+[functions."vendor-config"]
+  timeout = 26
+
+# Daily email digest at 8:30am UTC (after scan completes)
+[functions."email-digest"]
+  schedule = "30 8 * * *"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

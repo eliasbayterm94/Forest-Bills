@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Forest · Bills</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ╔════════════════════════════════════════════════════════════════════╗
+   ║ FOREST BILLS — Design System v2 (Light Mode)                      ║
+   ╚════════════════════════════════════════════════════════════════════╝ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+:root{
+  /* Brand palette */
+  --fc-yellow:#e7e244; --fc-blue:#95b5ce; --fc-navy:#1b203d; --fc-navy-dark:#0f1226; --fc-ink:#0c0c0b; --fc-paper:#ffffff;
+  /* Tints */
+  --fc-yellow-100:#fbf9d3; --fc-yellow-200:#f5f08a; --fc-yellow-600:#c9c422;
+  --fc-blue-100:#e6eef5; --fc-blue-200:#c7d8e6; --fc-blue-700:#5b85a3; --fc-blue-900:#2e4a63;
+  --fc-ink-100:#e8e8e2; --fc-ink-200:#c9c9c2; --fc-ink-300:#9a9a93; --fc-ink-500:#5a5a55; --fc-ink-700:#2a2a28;
+  --fc-cream:#f5f4ee;
+  /* Semantic */
+  --fc-success:#4d7c2f; --fc-warning:#c47820; --fc-danger:#a8351c; --fc-info:var(--fc-blue-700);
+  /* Typography */
+  --fc-font-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --fc-font-body:"Montserrat","Helvetica Neue",Arial,sans-serif;
+  --fc-font-mono:"DM Mono","JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace;
+  /* Spacing */
+  --fc-ls-display:.18em; --fc-ls-eyebrow:.32em; --fc-ls-loose:.04em; --fc-ls-tight:-.01em;
+  /* Shadows */
+  --fc-shadow-1:0 1px 2px rgba(12,12,11,.06); --fc-shadow-2:0 2px 8px rgba(12,12,11,.08);
+  --fc-shadow-3:0 4px 12px rgba(12,12,11,.10);
+  /* Motion */
+  --fc-ease-out:cubic-bezier(.22,1,.36,1); --fc-dur-fast:150ms; --fc-dur-base:220ms;
+  /* Navy on-dark */
+  --fc-on-navy-1:#ffffff; --fc-on-navy-2:rgba(255,255,255,.78); --fc-on-navy-3:rgba(255,255,255,.62);
+  --fc-on-navy-divider:rgba(255,255,255,.10);
+  /* Legacy aliases for JS inline styles */
+  --y:#e7e244;--b:#95b5ce;--n:#1b203d;--nm:#252b4a;--nl:#2e3560;--w:#ffffff;--o:var(--fc-ink);
+  --mu:var(--fc-ink-500);--br:var(--fc-ink-100);--ok:var(--fc-success);--wa:var(--fc-warning);--er:var(--fc-danger);
+}
+html{font-size:16px;}
+body{font-family:var(--fc-font-body);font-weight:400;font-size:1rem;line-height:1.5;color:var(--fc-ink);background:var(--fc-paper);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+
+/* ── SIDEBAR ────────────────────────────────────────────────────────── */
+.fc-app{display:flex;min-height:100vh;background:var(--fc-cream);}
+.fc-app-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.fc-sidebar{width:240px;background:var(--fc-navy-dark);color:var(--fc-on-navy-1);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:visible;transition:width var(--fc-dur-base) var(--fc-ease-out);border-right:1px solid rgba(255,255,255,.04);z-index:90;}
+.fc-sidebar.collapsed{width:64px;}
+.sb-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--fc-on-navy-divider);min-height:60px;}
+.sb-logo{width:34px;height:34px;background:var(--fc-yellow);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sb-logo svg{width:20px;height:20px;color:var(--fc-navy-dark);}
+.sb-title{font-family:var(--fc-font-display);font-weight:700;font-size:11px;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;white-space:nowrap;}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0 16px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;}
+.sb-section{margin-top:16px;}
+.sb-section-label{padding:0 20px 6px;font-size:9px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;}
+.sb-link{width:100%;display:flex;align-items:center;gap:12px;padding:9px 20px;background:transparent;border:none;border-left:2px solid transparent;color:rgba(255,255,255,.6);font-family:var(--fc-font-body);font-size:12px;font-weight:500;letter-spacing:var(--fc-ls-loose);cursor:pointer;text-align:left;white-space:nowrap;transition:color var(--fc-dur-fast) var(--fc-ease-out),background var(--fc-dur-fast) var(--fc-ease-out),border-color var(--fc-dur-fast) var(--fc-ease-out);}
+.sb-link:hover{color:#fff;background:rgba(255,255,255,.03);}
+.sb-link.active{color:var(--fc-yellow);background:rgba(231,226,68,.08);border-left-color:var(--fc-yellow);}
+.sb-link i{width:16px;height:16px;flex-shrink:0;}
+.sb-badge{background:var(--fc-yellow);color:var(--fc-navy-dark);font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:auto;}
+
+/* Company cards */
+.sb-companies{padding:10px 12px;display:flex;flex-direction:column;gap:5px;}
+.sb-co-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:all .2s;border:1.5px solid transparent;}
+.sb-co-card:hover{background:rgba(255,255,255,.03);}
+.sb-co-card.active{background:rgba(231,226,68,.08);border-color:rgba(231,226,68,.25);}
+.sb-co-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:box-shadow .2s;}
+.sb-co-card.active .sb-co-dot{box-shadow:0 0 8px currentColor;}
+.sb-co-info{flex:1;min-width:0;}
+.sb-co-name{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);}
+.sb-co-card.active .sb-co-name{color:#fff;}
+.sb-co-entity{font-size:9px;color:rgba(255,255,255,.35);letter-spacing:.02em;}
+.sb-co-card.active .sb-co-entity{color:rgba(255,255,255,.5);}
+.sb-co-pending{font-family:var(--fc-font-mono);font-size:10px;font-weight:600;background:rgba(255,255,255,.06);padding:2px 7px;border-radius:10px;color:rgba(255,255,255,.5);flex-shrink:0;}
+.sb-co-card.active .sb-co-pending{background:rgba(231,226,68,.15);color:var(--fc-yellow);}
+
+/* ── TOPBAR ─────────────────────────────────────────────────────────── */
+.fc-topbar{background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;position:sticky;top:0;z-index:80;border-bottom:1px solid var(--fc-ink-100);}
+.fc-topbar-title{font-family:var(--fc-font-display);font-size:12px;font-weight:700;color:var(--fc-navy);letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;}
+.fc-topbar-right{display:flex;align-items:center;gap:10px;}
+.fc-topbar-dot{width:7px;height:7px;border-radius:50%;}
+.fc-topbar-label{font-size:11px;color:var(--fc-ink-500);}
+
+/* Mobile hamburger */
+.fc-mobile-toggle{display:none;align-items:center;justify-content:center;width:40px;height:40px;padding:0;margin-right:10px;background:var(--fc-navy);border:none;border-radius:6px;color:#fff;cursor:pointer;box-shadow:var(--fc-shadow-1);flex-shrink:0;}
+.fc-mobile-toggle i{width:22px;height:22px;}
+.fc-sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(12,12,11,.6);z-index:89;opacity:0;transition:opacity var(--fc-dur-base) var(--fc-ease-out);}
+.fc-sidebar-backdrop.open{display:block;opacity:1;}
+
+/* ── CONTENT ────────────────────────────────────────────────────────── */
+.fc-content{flex:1;padding:32px 48px;max-width:1440px;margin:0 auto;width:100%;}
+
+/* ── PAGES ──────────────────────────────────────────────────────────── */
+.page{display:none;}
+.page.on{display:block;}
+
+/* ── KPI STRIP (P&L Strip pattern) ──────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--fc-ink-100);border:1px solid var(--fc-ink-100);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.kpi{background:#fff;padding:14px 18px;}
+.kl{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:4px;}
+.kv{font-family:var(--fc-font-mono);font-size:22px;font-weight:600;line-height:1;letter-spacing:var(--fc-ls-tight);}
+.cy{color:var(--fc-navy);}.cb{color:var(--fc-blue-700);}.cg{color:var(--fc-success);}.cr{color:var(--fc-danger);}
+
+/* ── PANELS (Cards) ─────────────────────────────────────────────────── */
+.panel{background:#fff;border:1px solid var(--fc-ink-100);border-radius:10px;overflow:hidden;margin-bottom:16px;box-shadow:var(--fc-shadow-1);}
+.ph{padding:12px 20px;border-bottom:1px solid var(--fc-ink-100);display:flex;align-items:center;gap:8px;}
+.pd{width:6px;height:6px;border-radius:50%;background:var(--fc-yellow);flex-shrink:0;}
+.pt{font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);}
+.phr{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.pb{padding:16px 20px;}
+
+/* ── BUTTONS ────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:6px;font-family:var(--fc-font-body);font-size:11px;font-weight:600;letter-spacing:var(--fc-ls-loose);text-transform:uppercase;cursor:pointer;border:none;transition:all var(--fc-dur-fast) var(--fc-ease-out);white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn i{width:14px;height:14px;}
+.by{background:var(--fc-yellow);color:var(--fc-navy);}
+.by:hover:not(:disabled){background:var(--fc-yellow-600);}
+.bb{background:#fff;color:var(--fc-ink);border:1px solid var(--fc-ink-100);}
+.bb:hover:not(:disabled){background:var(--fc-cream);}
+.bn-navy{background:var(--fc-navy);color:var(--fc-yellow);}
+.bn-navy:hover:not(:disabled){background:var(--fc-navy-dark);}
+.bok{background:var(--fc-success);color:#fff;}
+.bok:hover:not(:disabled){background:#3d6224;}
+.ber{background:rgba(168,53,28,.08);color:var(--fc-danger);border:1px solid rgba(168,53,28,.15);}
+.bsm{padding:5px 10px;font-size:10px;}
+
+/* ── TOOLBAR ────────────────────────────────────────────────────────── */
+.tb{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.dz{border:1.5px dashed var(--fc-ink-200);border-radius:8px;padding:12px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s;flex:1;min-width:180px;background:#fff;}
+.dz:hover{border-color:var(--fc-yellow);background:var(--fc-yellow-100);}
+.dzt{font-size:11px;color:var(--fc-ink-500);}
+.dzt strong{color:var(--fc-ink);display:block;font-size:12px;}
+#fi{display:none;}
+
+/* ── TABLES ─────────────────────────────────────────────────────────── */
+.tw{overflow-x:auto;}
+table.it,table.lt{width:100%;border-collapse:collapse;font-size:12px;}
+table.it th,table.lt th{background:var(--fc-cream);padding:9px 14px;text-align:left;font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);border-bottom:1px solid var(--fc-ink-100);position:sticky;top:0;}
+table.it td,table.lt td{padding:10px 14px;border-bottom:1px solid var(--fc-ink-100);vertical-align:middle;color:var(--fc-ink);}
+table.it tr:hover td,table.lt tr:hover td{background:var(--fc-cream);}
+table.it tr.done td{opacity:.55;}
+input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--fc-navy);}
+.fn{font-weight:600;color:var(--fc-ink);}
+.fs{font-size:10px;color:var(--fc-ink-500);margin-top:1px;}
+.src{display:inline-block;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;}
+.src.gmail{background:var(--fc-blue-100);color:var(--fc-blue-700);}
+.src.manual{background:var(--fc-yellow-100);color:var(--fc-navy);}
+.st{font-size:10px;font-weight:700;text-transform:uppercase;}
+.st.pending{color:var(--fc-ink-300);}
+.st.extracting,.st.pushing{color:var(--fc-warning);}
+.st.extracted{color:var(--fc-blue-700);}
+.st.done{color:var(--fc-success);}
+.st.duplicate{color:var(--fc-warning);}
+.st.error{color:var(--fc-danger);}
+.amt{font-family:var(--fc-font-mono);font-weight:600;color:var(--fc-navy);text-align:right;letter-spacing:var(--fc-ls-tight);}
+.qbl a{color:var(--fc-blue-700);text-decoration:none;font-size:11px;border-bottom:1px solid var(--fc-blue-200);}
+.erow td{text-align:center;padding:40px;color:var(--fc-ink-500);font-size:12px;}
+.dr{display:none;}
+.dr.open{display:table-row;}
+.dc{padding:0!important;border-bottom:2px solid var(--fc-yellow-200)!important;background:var(--fc-cream)!important;}
+.di{padding:14px 20px;display:grid;grid-template-columns:repeat(3,auto) 1fr;gap:20px;align-items:start;}
+.dll{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:2px;}
+.dv{font-size:13px;font-weight:700;color:var(--fc-ink);}
+.mt{width:100%;border-collapse:collapse;font-size:11px;}
+.mt th{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-ink-500);padding:5px 10px;text-align:left;border-bottom:1px solid var(--fc-ink-100);}
+.mt td{padding:6px 10px;border-bottom:1px solid var(--fc-ink-100);color:var(--fc-ink);}
+.mt tr:last-child td{border-bottom:none;}
+.mac{color:var(--fc-blue-700);font-weight:600;}
+.mam{text-align:right;font-family:var(--fc-font-mono);font-weight:600;color:var(--fc-navy);}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;}
+.badge.high{background:rgba(77,124,47,.12);color:var(--fc-success);}
+.badge.medium{background:rgba(196,120,32,.12);color:var(--fc-warning);}
+.badge.low{background:rgba(168,53,28,.12);color:var(--fc-danger);}
+.abar{display:flex;align-items:center;gap:10px;padding:11px 20px;background:var(--fc-cream);border-top:1px solid var(--fc-ink-100);}
+.abinfo{flex:1;font-size:11px;color:var(--fc-ink-500);}
+.abinfo strong{color:var(--fc-navy);}
+
+/* ── LOG ────────────────────────────────────────────────────────────── */
+.lstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.lsk{background:#fff;border:1px solid var(--fc-ink-100);border-radius:10px;padding:14px 18px;box-shadow:var(--fc-shadow-1);}
+.lskl{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:4px;}
+.lskv{font-family:var(--fc-font-mono);font-size:20px;font-weight:600;color:var(--fc-navy);letter-spacing:var(--fc-ls-tight);}
+.tscroll{max-height:calc(100vh - 320px);overflow-y:auto;}
+.tscroll::-webkit-scrollbar{width:5px;}
+.tscroll::-webkit-scrollbar-track{background:var(--fc-cream);}
+.tscroll::-webkit-scrollbar-thumb{background:var(--fc-ink-200);border-radius:3px;}
+.le{text-align:center;padding:40px;color:var(--fc-ink-500);font-size:12px;}
+
+/* ── ANALYTICS ──────────────────────────────────────────────────────── */
+/* Aging strip */
+.aging-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--fc-ink-100);border:1px solid var(--fc-ink-100);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.aging-cell{background:#fff;padding:16px 20px;position:relative;}
+.aging-label{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:6px;}
+.aging-value{font-family:var(--fc-font-mono);font-size:24px;font-weight:600;letter-spacing:var(--fc-ls-tight);line-height:1;}
+.aging-sub{font-size:10px;color:var(--fc-ink-300);margin-top:4px;}
+.aging-bar{position:absolute;bottom:0;left:0;right:0;height:3px;}
+.aging-cell.danger{background:var(--fc-navy);}
+.aging-cell.danger .aging-label{color:rgba(255,255,255,.5);}
+.aging-cell.danger .aging-value{color:var(--fc-yellow);}
+.aging-cell.danger .aging-sub{color:rgba(255,255,255,.45);}
+.aging-pills{display:flex;gap:4px;flex-wrap:wrap;}
+.aging-pill{font-family:var(--fc-font-mono);font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.aging-pill.current{background:rgba(77,124,47,.08);color:var(--fc-success);}
+.aging-pill.mid{background:rgba(196,120,32,.08);color:var(--fc-warning);}
+.aging-pill.old{background:rgba(168,53,28,.08);color:var(--fc-danger);}
+.aging-pill.critical{background:var(--fc-navy);color:var(--fc-yellow);}
+
+.afil{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+select.fil{background:#fff;border:1px solid var(--fc-ink-100);border-radius:6px;padding:7px 12px;font-family:var(--fc-font-body);font-size:11px;color:var(--fc-ink);outline:none;cursor:pointer;}
+select.fil:focus{border-color:var(--fc-blue-700);}
+.akpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.ak{background:#fff;border:1px solid var(--fc-ink-100);border-radius:10px;padding:14px 18px;box-shadow:var(--fc-shadow-1);}
+.akl{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:5px;}
+.akv{font-family:var(--fc-font-mono);font-size:22px;font-weight:600;color:var(--fc-navy);letter-spacing:var(--fc-ls-tight);}
+.aks{font-size:11px;color:var(--fc-ink-500);margin-top:3px;}
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.cg3{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+.cbox{background:#fff;border:1px solid var(--fc-ink-100);border-radius:10px;padding:16px 20px;box-shadow:var(--fc-shadow-1);}
+.ctitle{font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:14px;}
+.cwrap{position:relative;height:220px;}
+#aloading{text-align:center;padding:60px;color:var(--fc-ink-500);font-size:12px;}
+
+/* ── SETTINGS / WIZARD ───────────────────────────────────────────────── */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);}
+.form-input{background:#fff;border:1px solid var(--fc-ink-200);border-radius:6px;padding:10px 14px;font-family:var(--fc-font-body);font-size:13px;color:var(--fc-ink);outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--fc-navy);}
+.form-input::placeholder{color:var(--fc-ink-300);}
+select.form-input{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239a9a93' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.form-hint{font-size:10px;color:var(--fc-ink-300);margin-top:2px;}
+.form-tag{display:inline-flex;align-items:center;gap:4px;background:var(--fc-blue-100);color:var(--fc-blue-700);padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:default;}
+.form-tag .x{cursor:pointer;font-weight:800;opacity:.5;margin-left:2px;}
+.form-tag .x:hover{opacity:1;color:var(--fc-danger);}
+.wiz-page{display:none;}.wiz-page.active{display:block;}
+.vendor-item{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--fc-ink-100);transition:background .15s;}
+.vendor-item:last-child{border-bottom:none;}
+.vendor-item:hover{background:var(--fc-cream);}
+.vendor-item .vi-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.vendor-item .vi-info{flex:1;min-width:0;}
+.vendor-item .vi-name{font-size:12px;font-weight:600;color:var(--fc-ink);}
+.vendor-item .vi-email{font-size:10px;color:var(--fc-ink-500);font-family:var(--fc-font-mono);}
+.vendor-item .vi-account{font-size:10px;color:var(--fc-blue-700);font-weight:500;margin-top:1px;}
+.vendor-item .vi-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;background:rgba(77,124,47,.08);color:var(--fc-success);}
+.vendor-item .vi-type{font-size:8px;font-weight:600;padding:1px 5px;border-radius:8px;text-transform:uppercase;letter-spacing:.03em;margin-left:4px;}
+.vendor-item .vi-type.hardcoded{background:var(--fc-ink-100);color:var(--fc-ink-500);}
+.vendor-item .vi-type.dynamic{background:rgba(231,226,68,.15);color:var(--fc-navy);}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── OVERDUE ALERT (Lavender blue per design system) ────────────────── */
+#overdue-banner{background:var(--fc-blue-100);border:1px solid var(--fc-blue-200);border-left:3px solid var(--fc-danger);border-radius:10px;padding:13px 20px;margin-bottom:16px;}
+
+/* ── LOGIN ──────────────────────────────────────────────────────────── */
+#login-overlay{position:fixed;inset:0;background:var(--fc-navy);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.login-box{background:var(--fc-navy-dark);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:40px;width:340px;text-align:center;box-shadow:0 20px 48px rgba(0,0,0,.4);}
+.login-box svg{width:40px;height:40px;margin-bottom:16px;}
+.login-box h2{font-family:var(--fc-font-display);font-size:14px;font-weight:800;letter-spacing:var(--fc-ls-display);text-transform:uppercase;color:#fff;margin-bottom:4px;}
+.login-box .sub{font-size:11px;color:var(--fc-on-navy-3);margin-bottom:24px;}
+.login-box input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:10px 14px;font-family:var(--fc-font-body);font-size:13px;color:#fff;outline:none;margin-bottom:12px;text-align:center;letter-spacing:.15em;}
+.login-box input:focus{border-color:var(--fc-yellow);}
+.login-box .lerr{font-size:11px;color:var(--fc-danger);margin-bottom:8px;min-height:16px;}
+.login-box .btn.by{width:100%;}
+
+/* ── MOBILE ─────────────────────────────────────────────────────────── */
+@media(max-width:1023px){
+  .fc-sidebar{position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%);transition:transform var(--fc-dur-base) var(--fc-ease-out);width:280px;z-index:100;}
+  .fc-sidebar.open{transform:translateX(0);}
+  .fc-mobile-toggle{display:flex;}
+  .fc-content{padding:24px;}
+}
+@media(max-width:768px){
+  .fc-content{padding:14px 14px 80px;}
+  .kpis{grid-template-columns:repeat(3,1fr);}
+  .kpis .kpi:nth-child(4),.kpis .kpi:nth-child(5){display:none;}
+  .tb{flex-direction:column;align-items:stretch;gap:8px;}
+  .dz{min-width:0;padding:10px 14px;}
+  .tb .btn{width:100%;justify-content:center;}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.it{min-width:600px;}
+  .di{grid-template-columns:1fr!important;gap:10px;padding:10px 14px;}
+  .abar{flex-wrap:wrap;gap:6px;padding:8px 12px;}
+  .abar .btn{flex:1;min-width:80px;}
+  .lstats{grid-template-columns:1fr;gap:8px;}
+  .afil{flex-direction:column;align-items:stretch;}
+  .akpis{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .cg2,.cg3{grid-template-columns:1fr;}
+  .cwrap{height:180px;}
+  .aging-strip{grid-template-columns:repeat(2,1fr);}
+  .sgrid{grid-template-columns:1fr;}
+
+  .ph{padding:10px 12px;flex-wrap:wrap;gap:4px;}
+  .login-box{width:90%;max-width:320px;padding:28px 20px;}
+}
+@media(max-width:380px){
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  .kpis .kpi:nth-child(3){display:none;}
+  .akpis{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-box">
+    <svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#e7e244" stroke-width="1.5"/><path d="M14 22V10M14 10C14 10 10 8 8 4M14 10C14 10 18 8 20 4M14 10C14 10 11 12 9 16M14 10C14 10 17 12 19 16" stroke="#e7e244" stroke-width="1.2" stroke-linecap="round"/></svg>
+    <h2>FOREST<span style="color:var(--fc-yellow)"> · </span>BILLS</h2>
+    <div class="sub">Enter access key to continue</div>
+    <input type="password" id="login-key" placeholder="API Key" onkeydown="if(event.key==='Enter')doLogin()" autofocus />
+    <div class="lerr" id="login-err"></div>
+    <button class="btn by" onclick="doLogin()">Unlock</button>
+  </div>
+</div>
+
+<!-- SIDEBAR BACKDROP (mobile) -->
+<div class="fc-sidebar-backdrop" id="sb-backdrop" onclick="toggleSidebar()"></div>
+
+<!-- APP SHELL -->
+<div class="fc-app">
+
+  <!-- SIDEBAR -->
+  <aside class="fc-sidebar" id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="currentColor" stroke-width="1.5"/><path d="M14 22V10M14 10C14 10 10 8 8 4M14 10C14 10 18 8 20 4M14 10C14 10 11 12 9 16M14 10C14 10 17 12 19 16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+      <span class="sb-title">FOREST · BILLS</span>
+    </div>
+    <!-- Company Cards -->
+    <div class="sb-companies">
+      <div class="sb-co-card active" id="sb-co-USA" onclick="sbSwitchCompany('USA')">
+        <div class="sb-co-dot" style="background:var(--fc-navy);color:var(--fc-navy)"></div>
+        <div class="sb-co-info"><div class="sb-co-name">USA</div><div class="sb-co-entity">Forest Coffee LLC</div></div>
+        <div class="sb-co-pending" id="sb-co-pending-USA">—</div>
+      </div>
+      <div class="sb-co-card" id="sb-co-EU" onclick="sbSwitchCompany('EU')">
+        <div class="sb-co-dot" style="background:var(--fc-yellow);color:var(--fc-yellow)"></div>
+        <div class="sb-co-info"><div class="sb-co-name">Europe</div><div class="sb-co-entity">Forest Coffee SL</div></div>
+        <div class="sb-co-pending" id="sb-co-pending-EU">—</div>
+      </div>
+      <div class="sb-co-card" id="sb-co-AU" onclick="sbSwitchCompany('AU')">
+        <div class="sb-co-dot" style="background:var(--fc-blue);color:var(--fc-blue)"></div>
+        <div class="sb-co-info"><div class="sb-co-name">Australia</div><div class="sb-co-entity">Forest Coffee AU</div></div>
+        <div class="sb-co-pending" id="sb-co-pending-AU">—</div>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--fc-on-navy-divider);margin:4px 12px"></div>
+    <nav class="sb-nav">
+      <div class="sb-section">
+        <div class="sb-section-label">Operations</div>
+        <button class="sb-link active ntab" onclick="go('invoices');closeSidebar()" id="tab-inv">
+          <i data-lucide="zap"></i><span class="label">Invoices</span><span class="sb-badge" id="pending-badge" style="display:none">0</span>
+        </button>
+        <button class="sb-link ntab" onclick="go('log');closeSidebar()" id="tab-log">
+          <i data-lucide="clipboard-list"></i><span class="label">Bill Log</span>
+        </button>
+        <button class="sb-link ntab" onclick="go('analytics');closeSidebar()">
+          <i data-lucide="bar-chart-3"></i><span class="label">Analytics</span>
+        </button>
+        <button class="sb-link ntab" onclick="go('recon');closeSidebar()">
+          <i data-lucide="git-compare"></i><span class="label">Reconcile</span>
+        </button>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-label">System</div>
+        <button class="sb-link ntab" onclick="go('settings');closeSidebar()">
+          <i data-lucide="settings"></i><span class="label">Settings</span>
+        </button>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="fc-app-main">
+    <header class="fc-topbar">
+      <div style="display:flex;align-items:center">
+        <button class="fc-mobile-toggle" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+        <span class="fc-topbar-title" id="topbar-title">Invoices</span>
+      </div>
+      <div class="fc-topbar-right">
+        <div class="fc-topbar-dot" id="co-dot" style="background:var(--fc-yellow);box-shadow:0 0 6px var(--fc-yellow)"></div>
+        <span class="fc-topbar-label" id="co-label">QB · Forest Coffee LLC</span>
+      </div>
+    </header>
+
+    <div class="fc-content">
+
+    <!-- OVERDUE ALERT BANNER -->
+    <div id="overdue-banner" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:30px;height:30px;background:rgba(168,53,28,.12);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="alert-triangle" style="width:16px;height:16px;color:var(--fc-danger)"></i></div>
+        <div>
+          <span style="font-size:13px;font-weight:600;color:var(--fc-navy)" id="overdue-text">0 overdue bills</span>
+          <span style="font-size:11px;color:var(--fc-blue-700);margin-left:8px" id="overdue-detail"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CROSS-COMPANY SUMMARY -->
+    <!-- KPI BAR -->
+    <div class="kpis">
+      <div class="kpi"><div class="kl">In Queue</div><div class="kv cy" id="k-queue">0</div></div>
+      <div class="kpi"><div class="kl">Extracted</div><div class="kv cb" id="k-ext">0</div></div>
+      <div class="kpi"><div class="kl">Pushed to QB</div><div class="kv cg" id="k-done">0</div></div>
+      <div class="kpi"><div class="kl">Errors</div><div class="kv cr" id="k-err">0</div></div>
+      <div class="kpi"><div class="kl">Session Total</div><div class="kv cy" id="k-total">$0.00</div></div>
+    </div>
+
+    <!-- PAGE: INVOICES -->
+    <div class="page on" id="page-invoices">
+      <div class="tb">
+        <div class="dz" onclick="document.getElementById('fi').click()" id="dz">
+          <i data-lucide="upload" style="width:20px;height:20px;color:var(--fc-ink-300)"></i>
+          <div class="dzt"><strong>Upload PDFs manually</strong>Drop or click to browse</div>
+        </div>
+        <select class="fil" id="manual-vendor-sel" style="min-width:140px" title="Select vendor for manual uploads">
+          <option value="">Auto-detect vendor</option>
+        </select>
+        <input type="file" id="fi" accept=".pdf" multiple />
+        <button class="btn bb" onclick="scanGmail()" id="gbtn"><i data-lucide="mail"></i> Scan Gmail</button>
+        <button class="btn bb bsm" onclick="scanGmail(true)" id="rbtn" title="Re-scan emails already marked as done"><i data-lucide="refresh-cw"></i> Rescan</button>
+        <button class="btn bb" onclick="selAll()" id="selbtn" disabled><i data-lucide="check-square"></i> Select All</button>
+        <button class="btn by" onclick="extractSel()" id="exbtn" disabled><i data-lucide="zap"></i> Extract</button>
+        <button class="btn bok" onclick="pushSel()" id="pushbtn" disabled><i data-lucide="send"></i> Push to QB</button>
+        <button class="btn ber bsm" onclick="clearAllInvoices()" id="clearbtn" style="display:none"><i data-lucide="trash-2"></i> Clear All</button>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pd"></div><span class="pt">Invoice Queue</span><div class="phr"><span style="font-size:10px;color:var(--fc-ink-500)" id="qinfo">No invoices loaded</span></div></div>
+        <div class="tw">
+          <table class="it">
+            <thead><tr>
+              <th style="width:36px"><input type="checkbox" id="cball" onchange="togAll(this.checked)" /></th>
+              <th>File / Subject</th><th>Source</th><th>From</th><th>Date</th>
+              <th>Status</th><th>Vendor</th><th>Invoice #</th><th style="text-align:right">Amount</th><th>QB</th>
+            </tr></thead>
+            <tbody id="itbody"><tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr></tbody>
+          </table>
+        </div>
+        <div class="abar" id="abar" style="display:none">
+          <div class="abinfo"><strong id="selcnt">0</strong> selected · <strong id="selamt">$0.00</strong></div>
+          <button class="btn ber bsm" onclick="removeSel()"><i data-lucide="x"></i> Remove</button>
+          <button class="btn bb bsm" onclick="extractSel()"><i data-lucide="zap"></i> Extract</button>
+          <button class="btn bok bsm" onclick="pushSel()"><i data-lucide="send"></i> Push to QB</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: LOG -->
+    <div class="page" id="page-log">
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+        <button class="btn by" onclick="loadLogAndOverdue()" id="log-load-btn"><i data-lucide="refresh-cw"></i> Load from QuickBooks</button>
+        <span style="font-size:10px;color:var(--fc-ink-500)" id="log-load-status">Click to load bill data from QuickBooks</span>
+      </div>
+      <div class="lstats">
+        <div class="lsk"><div class="lskl">Total Bills</div><div class="lskv" id="ln">0</div></div>
+        <div class="lsk"><div class="lskl">Total Amount</div><div class="lskv" id="lamt">$0.00</div></div>
+        <div class="lsk"><div class="lskl">Vendors</div><div class="lskv" id="lv">0</div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pd"></div><span class="pt">Imported Bills</span><span style="margin-left:auto;font-size:10px;color:var(--fc-ink-500)" id="lnote">—</span></div>
+        <div class="tscroll">
+          <table class="lt">
+            <thead><tr><th>Imported At</th><th>Vendor</th><th>Invoice #</th><th>Invoice Date</th><th>Due Date</th><th style="text-align:right">Amount</th><th>QB Bill</th></tr></thead>
+            <tbody id="ltbody"><tr><td colspan="7" class="le">Press "Load from QuickBooks" to fetch bill data</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ANALYTICS -->
+    <div class="page" id="page-analytics">
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+        <button class="btn by" onclick="loadAnalyticsManual()" id="analytics-load-btn"><i data-lucide="refresh-cw"></i> Load from QuickBooks</button>
+        <span style="font-size:10px;color:var(--fc-ink-500)" id="analytics-load-status">Click to load analytics data from QuickBooks</span>
+      </div>
+      <div class="afil" style="display:none" id="afil-bar">
+        <select class="fil" id="af-v" onchange="applyF()"><option value="">All Vendors</option></select>
+        <select class="fil" id="af-t" onchange="applyF()">
+          <option value="">All Expense Types</option>
+          <option value="Storage">Storage</option>
+          <option value="Handling">Handling & Loadout</option>
+          <option value="Container">Container Costs</option>
+          <option value="Samples">Samples</option>
+          <option value="Duties">Duties</option>
+        </select>
+        <select class="fil" id="af-m" onchange="applyF()">
+          <option value="">All Months</option>
+        </select>
+        <button class="btn bb bsm" onclick="loadAnalyticsManual()"><i data-lucide="refresh-cw"></i> Refresh</button>
+        <span style="font-size:10px;color:var(--fc-ink-500)" id="anote">—</span>
+      </div>
+      <div id="aloading" style="display:none"></div>
+      <div id="acontent" style="display:none">
+        <div class="akpis">
+          <div class="ak"><div class="akl">Total Spend</div><div class="akv" id="ak-total">$0</div><div class="aks" id="ak-tsub">0 bills</div></div>
+          <div class="ak"><div class="akl">Avg Monthly</div><div class="akv" id="ak-avg">$0</div><div class="aks">YTD</div></div>
+          <div class="ak"><div class="akl">Largest Bill</div><div class="akv" id="ak-max">$0</div><div class="aks" id="ak-msub">—</div></div>
+          <div class="ak"><div class="akl">Outstanding</div><div class="akv" id="ak-out">$0</div><div class="aks">unpaid balance</div></div>
+        </div>
+        <!-- Aging Strip -->
+        <div style="font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:10px;">Accounts Payable Aging</div>
+        <div id="aging-strip" class="aging-strip">
+          <div class="aging-cell"><div class="aging-label">Current (0-30 days)</div><div class="aging-value" style="color:var(--fc-success)" id="ag-current">$0</div><div class="aging-sub" id="ag-current-n">0 bills</div><div class="aging-bar" style="background:var(--fc-success)"></div></div>
+          <div class="aging-cell"><div class="aging-label">31-60 Days</div><div class="aging-value" style="color:var(--fc-warning)" id="ag-3160">$0</div><div class="aging-sub" id="ag-3160-n">0 bills</div><div class="aging-bar" style="background:var(--fc-warning)"></div></div>
+          <div class="aging-cell"><div class="aging-label">61-90 Days</div><div class="aging-value" style="color:var(--fc-ink-300)" id="ag-6190">$0</div><div class="aging-sub" id="ag-6190-n">0 bills</div><div class="aging-bar" style="background:var(--fc-ink-200)"></div></div>
+          <div class="aging-cell" id="ag-90-cell"><div class="aging-label">90+ Days Overdue</div><div class="aging-value" id="ag-90">$0</div><div class="aging-sub" id="ag-90-n">0 bills</div><div class="aging-bar" style="background:var(--fc-ink-200)"></div></div>
+        </div>
+        <div class="cg2">
+          <div class="cbox"><div class="ctitle">Monthly Spend Trend</div><div class="cwrap"><canvas id="c-monthly"></canvas></div></div>
+          <div class="cbox"><div class="ctitle">Cost by Expense Type</div><div class="cwrap"><canvas id="c-type"></canvas></div></div>
+        </div>
+        <div class="cg3">
+          <div class="cbox"><div class="ctitle">Cost by Vendor</div><div class="cwrap" style="height:200px"><canvas id="c-vendor"></canvas></div></div>
+          <div class="cbox"><div class="ctitle">Storage vs Handling vs Container</div><div class="cwrap" style="height:200px"><canvas id="c-ratio"></canvas></div></div>
+        </div>
+        <div class="panel" style="margin-bottom:16px">
+          <div class="ph"><div class="pd" style="background:var(--fc-danger)"></div><span class="pt">Balance by Vendor</span><div class="phr">Total outstanding: <strong style="color:var(--fc-danger);font-family:var(--fc-font-mono)" id="vb-total-outstanding">$0</strong></div></div>
+          <div style="overflow-x:auto">
+            <table class="lt">
+              <thead><tr><th>Vendor</th><th style="text-align:center">Bills</th><th style="text-align:right">Total Billed</th><th style="text-align:right">Balance Due</th><th>Aging</th></tr></thead>
+              <tbody id="vb-tbody"><tr><td colspan="5" class="le">Load data to see balances</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pd" style="background:var(--fc-yellow)"></div><span class="pt">Bills Detail</span><div class="phr"><span style="font-size:10px;color:var(--fc-ink-500)" id="acnt">0 bills</span></div></div>
+          <div class="tscroll">
+            <table class="lt">
+              <thead><tr><th>Date</th><th>Vendor</th><th>Invoice #</th><th>Due Date</th><th>Types</th><th style="text-align:right">Amount</th><th style="text-align:right">Balance</th><th>QB</th></tr></thead>
+              <tbody id="atbody"><tr><td colspan="8" class="le">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: RECONCILIATION -->
+    <div class="page" id="page-recon">
+      <div id="recon-step1">
+        <div style="margin-bottom:16px">
+          <div style="font-family:var(--fc-font-display);font-size:14px;font-weight:800;letter-spacing:var(--fc-ls-display);text-transform:uppercase;margin-bottom:4px;color:var(--fc-navy)">Statement <span style="color:var(--fc-ink-500)">Reconciliation</span></div>
+          <div style="font-size:11px;color:var(--fc-ink-500)">Upload a vendor statement PDF to cross-reference against QuickBooks</div>
+        </div>
+        <div id="recon-dz" style="border:2px dashed var(--fc-ink-200);border-radius:10px;padding:28px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s;background:#fff;margin-bottom:16px" onclick="document.getElementById('recon-fi').click()">
+          <i data-lucide="file-text" style="width:28px;height:28px;color:var(--fc-ink-300)"></i>
+          <div><strong style="color:var(--fc-ink);font-size:13px;display:block;margin-bottom:2px">Drop statement PDF here or click to upload</strong><span style="font-size:11px;color:var(--fc-ink-500)">Supports statements from all whitelisted vendors</span></div>
+        </div>
+        <input type="file" id="recon-fi" accept=".pdf" style="display:none" />
+      </div>
+      <div id="recon-step2" style="display:none;text-align:center;padding:40px">
+        <div style="font-size:14px;font-weight:700;color:var(--fc-navy);margin-bottom:8px">Extracting statement data...</div>
+        <div style="font-size:11px;color:var(--fc-ink-500)" id="recon-step2-file"></div>
+      </div>
+      <div id="recon-step3" style="display:none;text-align:center;padding:40px">
+        <div style="font-size:14px;font-weight:700;color:var(--fc-blue-700);margin-bottom:8px">Loading QuickBooks data & reconciling...</div>
+      </div>
+      <div id="recon-results" style="display:none">
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;padding:12px 18px;background:#fff;border:1px solid var(--fc-ink-100);border-radius:10px;flex-wrap:wrap;box-shadow:var(--fc-shadow-1)">
+          <div><div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500)">Vendor</div><div style="font-size:14px;font-weight:700;color:var(--fc-ink)" id="rc-vendor">—</div></div>
+          <div><div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500)">Period</div><div style="font-size:14px;font-weight:700;color:var(--fc-ink)" id="rc-period">—</div></div>
+          <div><div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500)">Statement Total</div><div style="font-family:var(--fc-font-mono);font-size:14px;font-weight:600;color:var(--fc-navy)" id="rc-stmt-total">—</div></div>
+          <div><div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500)">QB Total</div><div style="font-family:var(--fc-font-mono);font-size:14px;font-weight:600;color:var(--fc-blue-700)" id="rc-qb-total">—</div></div>
+          <div><div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500)">Difference</div><div style="font-family:var(--fc-font-mono);font-size:14px;font-weight:600" id="rc-diff">—</div></div>
+        </div>
+        <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi"><div class="kl">Matched</div><div class="kv" style="color:var(--fc-success)" id="rc-matched">0</div></div>
+          <div class="kpi"><div class="kl">Mismatch</div><div class="kv" style="color:var(--fc-warning)" id="rc-mismatch">0</div></div>
+          <div class="kpi"><div class="kl">Missing in QB</div><div class="kv" style="color:var(--fc-danger)" id="rc-missing-qb">0</div></div>
+          <div class="kpi"><div class="kl">Missing in Stmt</div><div class="kv" style="color:var(--fc-blue-700)" id="rc-missing-stmt">0</div></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pd"></div><span class="pt">Line-by-Line Reconciliation</span><div class="phr">
+            <button class="btn bb bsm" onclick="reconFilter('all')">All</button>
+            <button class="btn bb bsm" onclick="reconFilter('issues')" style="color:var(--fc-danger)">Issues Only</button>
+          </div></div>
+          <div style="overflow-x:auto">
+            <table class="it">
+              <thead><tr><th>Status</th><th>Invoice #</th><th>Date</th><th>Due Date</th><th style="text-align:right">Stmt Amt</th><th style="text-align:right">QB Amt</th><th style="text-align:right">QB Balance</th><th style="text-align:right">Diff</th><th>Notes</th></tr></thead>
+              <tbody id="rc-tbody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--fc-ink-500);font-size:12px">Upload a statement to begin</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:12px 0">
+          <button class="btn by" onclick="reconExportPDF()"><i data-lucide="download"></i> Download PDF</button>
+          <button class="btn bb" onclick="reconReset()"><i data-lucide="refresh-cw"></i> New Reconciliation</button>
+          <span style="margin-left:auto;font-size:10px;color:var(--fc-ink-500)" id="rc-timestamp">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SETTINGS -->
+    <div class="page" id="page-settings">
+      <!-- Vendor Admin: List + Add button -->
+      <div id="vendor-admin">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div>
+            <div style="font-family:var(--fc-font-display);font-size:14px;font-weight:800;letter-spacing:var(--fc-ls-display);text-transform:uppercase;color:var(--fc-navy)">Vendor <span style="color:var(--fc-ink-500)">Configuration</span></div>
+            <div style="font-size:11px;color:var(--fc-ink-500)">Manage vendor email whitelist and account mapping rules</div>
+          </div>
+          <button class="btn bn" onclick="showWizard()"><i data-lucide="plus"></i> Add Vendor</button>
+        </div>
+        <div class="sgrid">
+          <div class="panel">
+            <div class="ph"><div class="pd" style="background:var(--fc-yellow)"></div><span class="pt">Active Vendors</span><span style="margin-left:auto;font-size:10px;color:var(--fc-ink-500)" id="settings-co-label">USA</span></div>
+            <div class="pb" style="padding:0">
+              <div id="vendor-list-container" style="max-height:400px;overflow-y:auto"></div>
+            </div>
+          </div>
+          <div>
+            <div class="panel">
+              <div class="ph"><div class="pd"></div><span class="pt">Company Info</span></div>
+              <div class="pb"><div id="settings-company-info"></div></div>
+            </div>
+            <div class="panel">
+              <div class="ph"><div class="pd"></div><span class="pt">Anti-Duplicate Protection</span></div>
+              <div class="pb">
+                <div style="padding:10px 14px;background:rgba(77,124,47,.06);border:1px solid rgba(77,124,47,.15);border-radius:6px;margin-bottom:14px">
+                  <div style="font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-success);margin-bottom:3px">Active</div>
+                  <div style="font-size:12px;color:var(--fc-ink)">Duplicate bills are blocked before reaching QuickBooks</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vendor Onboarding Wizard (hidden by default) -->
+      <div id="vendor-wizard" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <button class="btn bb bsm" onclick="hideWizard()"><i data-lucide="arrow-left"></i> Back</button>
+          <span style="font-family:var(--fc-font-display);font-size:12px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-navy)">Add New Vendor</span>
+        </div>
+        <!-- Steps indicator -->
+        <div style="display:flex;gap:1px;background:var(--fc-ink-100);border:1px solid var(--fc-ink-100);border-radius:10px;overflow:hidden;margin-bottom:24px" id="wiz-steps">
+          <div class="wiz-step active" data-step="1" style="flex:1;padding:12px 16px;background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="wizGo(1)">
+            <span class="wiz-num" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fc-font-display);font-size:10px;font-weight:800;border:2px solid var(--fc-navy);background:var(--fc-navy);color:var(--fc-yellow);flex-shrink:0">1</span>
+            <span style="font-size:11px;font-weight:600;color:var(--fc-navy)">Basic Info</span>
+          </div>
+          <div class="wiz-step" data-step="2" style="flex:1;padding:12px 16px;background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="wizGo(2)">
+            <span class="wiz-num" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fc-font-display);font-size:10px;font-weight:800;border:2px solid var(--fc-ink-200);color:var(--fc-ink-300);flex-shrink:0">2</span>
+            <span style="font-size:11px;font-weight:600;color:var(--fc-ink-300)">Sample Invoice</span>
+          </div>
+          <div class="wiz-step" data-step="3" style="flex:1;padding:12px 16px;background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="wizGo(3)">
+            <span class="wiz-num" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fc-font-display);font-size:10px;font-weight:800;border:2px solid var(--fc-ink-200);color:var(--fc-ink-300);flex-shrink:0">3</span>
+            <span style="font-size:11px;font-weight:600;color:var(--fc-ink-300)">Map Accounts</span>
+          </div>
+          <div class="wiz-step" data-step="4" style="flex:1;padding:12px 16px;background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="wizGo(4)">
+            <span class="wiz-num" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fc-font-display);font-size:10px;font-weight:800;border:2px solid var(--fc-ink-200);color:var(--fc-ink-300);flex-shrink:0">4</span>
+            <span style="font-size:11px;font-weight:600;color:var(--fc-ink-300)">Confirm</span>
+          </div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div class="wiz-page" id="wiz-1">
+          <div class="panel"><div class="ph"><div class="pd" style="background:var(--fc-yellow)"></div><span class="pt">Vendor Information</span></div>
+          <div class="pb">
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Company</label><select class="form-input" id="wiz-company"><option value="USA">Forest Coffee LLC (USA)</option><option value="EU">Forest Coffee SL (EU)</option><option value="AU">Forest Coffee AU Pty Ltd (AU)</option></select></div>
+              <div class="form-group"><label class="form-label">Vendor Name in QuickBooks</label><input class="form-input" id="wiz-qb-name" placeholder="Exactly as it appears in QB" /><div class="form-hint">Must match QB exactly — punctuation, case, everything</div></div>
+              <div class="form-group full"><label class="form-label">Vendor Email(s)</label><div style="display:flex;gap:8px"><input class="form-input" id="wiz-email-input" placeholder="vendor@example.com" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();wizAddEmail()}" /><button class="btn bb bsm" onclick="wizAddEmail()">Add</button></div><div id="wiz-email-tags" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"></div><div class="form-hint">All emails that send invoices for this vendor</div></div>
+              <div class="form-group"><label class="form-label">Currency</label><select class="form-input" id="wiz-currency"><option value="">Same as company</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="AUD">AUD</option></select></div>
+              <div class="form-group"><label class="form-label">Default Payment Terms</label><select class="form-input" id="wiz-terms"><option>Net 7</option><option>Net 14</option><option selected>Net 30</option><option>Net 60</option></select></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:20px"><button class="btn by" onclick="wizGo(2)"><i data-lucide="arrow-right"></i> Next: Upload Invoice</button></div>
+          </div></div>
+        </div>
+
+        <!-- Step 2: Upload Sample -->
+        <div class="wiz-page" id="wiz-2" style="display:none">
+          <div class="panel"><div class="ph"><div class="pd" style="background:var(--fc-yellow)"></div><span class="pt">Upload Sample Invoice</span></div>
+          <div class="pb">
+            <p style="font-size:12px;color:var(--fc-ink-500);margin-bottom:16px">Upload a real invoice from this vendor. The system will analyze it and suggest account mappings.</p>
+            <div id="wiz-upload-zone" style="border:2px dashed var(--fc-ink-200);border-radius:10px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:all .2s;background:#fff;text-align:center" onclick="document.getElementById('wiz-file-input').click()">
+              <i data-lucide="file-up" style="width:32px;height:32px;color:var(--fc-ink-300)"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--fc-ink)">Drop invoice PDF here or click to browse</div>
+              <div style="font-size:11px;color:var(--fc-ink-500)">The system will extract line items and suggest QB account mappings</div>
+            </div>
+            <input type="file" id="wiz-file-input" accept=".pdf" style="display:none" />
+            <div id="wiz-file-preview" style="display:none;margin-top:12px"></div>
+            <div style="display:flex;justify-content:space-between;margin-top:20px">
+              <button class="btn bb" onclick="wizGo(1)"><i data-lucide="arrow-left"></i> Back</button>
+              <button class="btn by" id="wiz-analyze-btn" onclick="wizAnalyze()" disabled><i data-lucide="zap"></i> Analyze Invoice</button>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Step 3: Map Accounts -->
+        <div class="wiz-page" id="wiz-3" style="display:none">
+          <div class="panel"><div class="ph"><div class="pd" style="background:var(--fc-yellow)"></div><span class="pt">Extracted Data — Review & Map</span></div>
+          <div class="pb">
+            <div id="wiz-extract-loading" style="text-align:center;padding:40px;display:none">
+              <div style="display:inline-block;width:24px;height:24px;border:2.5px solid var(--fc-ink-100);border-top-color:var(--fc-navy);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px"></div>
+              <div style="font-size:12px;color:var(--fc-ink-500)">Analyzing invoice with Claude...</div>
+            </div>
+            <div id="wiz-extract-result" style="display:none">
+              <div id="wiz-extract-meta" style="display:grid;grid-template-columns:auto 1fr;gap:8px 20px;margin-bottom:20px"></div>
+              <div style="font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:8px">Line Item Mapping</div>
+              <p style="font-size:11px;color:var(--fc-ink-500);margin-bottom:12px">Assign each line to a QB account. These become the default rules for future invoices from this vendor.</p>
+              <div style="overflow-x:auto"><table class="lt" id="wiz-lines-table"><thead><tr><th style="width:30px">Use</th><th>Line Description</th><th style="width:220px">QB Account</th><th style="text-align:right">Amount</th></tr></thead><tbody id="wiz-lines-tbody"></tbody></table></div>
+              <div style="font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-top:24px;margin-bottom:8px">Additional Options</div>
+              <div id="wiz-options">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--fc-ink-100)">
+                  <div><div style="font-size:12px;font-weight:500">Only accept PDFs with "invoice" in filename</div><div style="font-size:10px;color:var(--fc-ink-500)">Skip delivery notes, packing lists, etc.</div></div>
+                  <label style="position:relative;width:40px;height:22px;display:block;cursor:pointer"><input type="checkbox" id="wiz-opt-invonly" style="display:none" /><span style="position:absolute;inset:0;background:var(--fc-ink-200);border-radius:11px;transition:background .2s" id="wiz-opt-invonly-bg"></span><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.1)" id="wiz-opt-invonly-dot"></span></label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--fc-ink-100)">
+                  <div><div style="font-size:12px;font-weight:500">Combine same-account lines</div><div style="font-size:10px;color:var(--fc-ink-500)">Merge multiple lines with the same QB account</div></div>
+                  <label style="position:relative;width:40px;height:22px;display:block;cursor:pointer"><input type="checkbox" id="wiz-opt-combine" checked style="display:none" /><span style="position:absolute;inset:0;background:var(--fc-success);border-radius:11px;transition:background .2s" id="wiz-opt-combine-bg"></span><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.1)" id="wiz-opt-combine-dot"></span></label>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:20px">
+              <button class="btn bb" onclick="wizGo(2)"><i data-lucide="arrow-left"></i> Back</button>
+              <button class="btn bn" onclick="wizSave()"><i data-lucide="check"></i> Save Rules & Activate</button>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Step 4: Confirm -->
+        <div class="wiz-page" id="wiz-4" style="display:none">
+          <div class="panel"><div class="pb" style="text-align:center;padding:48px 32px">
+            <div style="width:56px;height:56px;background:rgba(77,124,47,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i data-lucide="check" style="width:28px;height:28px;color:var(--fc-success)"></i></div>
+            <div style="font-family:var(--fc-font-display);font-size:16px;font-weight:800;letter-spacing:var(--fc-ls-display);text-transform:uppercase;color:var(--fc-navy);margin-bottom:6px">Vendor Saved</div>
+            <div style="font-size:12px;color:var(--fc-ink-500);max-width:400px;margin:0 auto 24px" id="wiz-success-msg">—</div>
+            <div id="wiz-success-summary" style="text-align:left;max-width:500px;margin:0 auto"></div>
+            <div style="margin-top:24px;display:flex;gap:10px;justify-content:center">
+              <button class="btn by" onclick="wizReset();showWizard()"><i data-lucide="plus"></i> Add Another</button>
+              <button class="btn bb" onclick="hideWizard()"><i data-lucide="arrow-left"></i> Back to Settings</button>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /fc-content -->
+  </div><!-- /fc-app-main -->
+</div><!-- /fc-app -->
+
+<script>
+const API    = '/.netlify/functions/process-bill';
+const GMAIL  = '/.netlify/functions/scan-gmail';
+const STATUS = '/.netlify/functions/update-invoice-status';
+const FBILLS = '/.netlify/functions/fetch-bills';
+
+// ── Auth ──
+let apiKey = localStorage.getItem('forest-api-key') || '';
+
+function authHeaders(extra = {}) {
+  return { 'Content-Type': 'application/json', 'X-API-Key': apiKey, ...extra };
+}
+
+async function authFetch(url, opts = {}) {
+  const headers = { 'X-API-Key': apiKey, ...(opts.headers || {}) };
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    localStorage.removeItem('forest-api-key');
+    apiKey = '';
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('login-err').textContent = 'Session expired — enter key again';
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
+
+async function doLogin() {
+  const key = document.getElementById('login-key').value.trim();
+  if (!key) { document.getElementById('login-err').textContent = 'Enter a key'; return; }
+  document.getElementById('login-err').textContent = '';
+  try {
+    const r = await fetch(`${GMAIL}?company=USA`, { method: 'GET', headers: { 'X-API-Key': key } });
+    if (r.status === 401) { document.getElementById('login-err').textContent = 'Invalid key'; return; }
+    apiKey = key;
+    localStorage.setItem('forest-api-key', key);
+    document.getElementById('login-overlay').style.display = 'none';
+    initApp();
+  } catch (e) { document.getElementById('login-err').textContent = 'Connection error'; }
+}
+
+// ── Vendor Config (read-only, mirrors backend company-config.js) ──
+const COMPANY_VENDORS = {
+  USA: [
+    {email:'invoiceshou@dupuygroup.com', name:'Dupuy Storage Houston'},
+    {email:'samples@continentalterminals.com', name:'Continental Terminals (Samples)'},
+    {email:'invoice@annextryco.net', name:'Continental Annex'},
+    {email:'jessica@continentalterminals.com', name:'Continental Terminals NJ'},
+    {email:'ana@continentalterminals.com', name:'Continental Terminals NJ'},
+    {email:'dougjr@continentalterminals.com', name:'Continental Terminals (Storage)'},
+    {email:'maria.duarte@shippgl.com', name:'PGL / Perimeter'},
+    {email:'gayle.cepeda@shippgl.com', name:'PGL / Perimeter'},
+    {email:'accounting@gbhdepot.com', name:'GBH Depot Inc'},
+    {email:'john.hayden@vamcorp.ca', name:'GBH Depot Inc (Vamcorp)'},
+    {email:'kacosta@rpmwarehouse.com', name:'Continental Terminals Inc (RPM)'},
+    {email:'ar@centurytransportation.net', name:'Century Transportation Inc'},
+  ],
+  EU: [
+    {email:'finrtm@vollers.com', name:'Vollers Holland BV (Rotterdam)'},
+    {email:'findon@vollers.com', name:'Vollers Holland BV (Dongen)'},
+    {email:'alexr@agcs.uk.com', name:'AGC (Commodity Store) Ltd.'},
+    {email:'ackie@agcs.uk.com', name:'AGC (Commodity Store) Ltd.'},
+    {email:'davidm@agcs.uk.com', name:'AGC (Commodity Store) Ltd.'},
+    {email:'e-invoicing.sk@raben-group.com', name:'Raben Logistics Slovakia'},
+    {email:'notification@nl01.inxpress-mail.com', name:'InXpress Nederland'},
+    {email:'daniela.stefan@mainfreight.com', name:'Mainfreight S.R.L.'},
+    {email:'sorin.panait@mainfreight.com', name:'Mainfreight S.R.L.'},
+    {email:'noreply-crossfireeu@mainfreight.com', name:'Mainfreight S.R.L.'},
+  ],
+  AU: [
+    {email:'cargowise@rpmfreight.com.au', name:'RPM Freight Melbourne'},
+    {email:'erica@maptrans.com.au', name:'Maptrans / MRP Freight'},
+    {email:'admin@maptrans.com.au', name:'Maptrans / MRP Freight'},
+    {email:'invoices@apps.myob.com', name:'Mainfreight Distribution'},
+    {email:'mfd.statements@mainfreight.com.au', name:'Mainfreight Distribution'},
+  ],
+};
+const COMPANY_INFO = {
+  USA: {entity:'Forest Coffee LLC', currency:'USD', location:'Orlando, FL', flag:'🇺🇸'},
+  EU: {entity:'Forest Coffee SL', currency:'EUR / GBP', location:'Madrid, Spain', flag:'🇪🇺'},
+  AU: {entity:'Forest Coffee AU Pty Ltd', currency:'AUD', location:'Norwood, SA', flag:'🇦🇺'},
+};
+
+// ── State ──
+let currentCompany = 'USA';
+let invs=[], blog=[], qbbills=[], fbills=[];
+let dataLoaded = false;
+let sdone=0, stotal=0, serr=0;
+const pushed = new Set();
+const charts = {};
+function ccy(v){ return currentCompany==='EU'?`€${Number(v).toLocaleString('en-US',{minimumFractionDigits:2})}`:`$${Number(v).toLocaleString('en-US',{minimumFractionDigits:2})}`; }
+
+// ── Navigation ──
+function switchCompany(co) {
+  currentCompany = co;
+  const labels = { USA: 'QB · Forest Coffee LLC', EU: 'QB · Forest Coffee SL', AU: 'QB · Forest Coffee AU' };
+  document.getElementById('co-label').textContent = labels[co] || labels.USA;
+  // Theme per company
+  const themes = { USA: '#1b203d', EU: '#e7e244', AU: '#95b5ce' };
+  const accent = themes[co] || themes.USA;
+  document.documentElement.style.setProperty('--y', accent);
+  const dot = document.getElementById('co-dot');
+  if (dot) { dot.style.background = accent; dot.style.boxShadow = `0 0 6px ${accent}`; }
+  // Reset ALL state
+  invs = []; blog = []; qbbills = []; fbills = []; dataLoaded = false;
+  sdone = 0; stotal = 0; serr = 0; pushed.clear();
+  document.getElementById('itbody').innerHTML = '<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
+  kset('queue',0); kset('ext',0); kset('done',0); kset('err',0); kset('total',0);
+  // Reset log UI
+  document.getElementById('ltbody').innerHTML = '<tr><td colspan="7" class="le">Switch to load...</td></tr>';
+  document.getElementById('ln').textContent = '0';
+  document.getElementById('lamt').textContent = '$0.00';
+  document.getElementById('lv').textContent = '0';
+  document.getElementById('lnote').textContent = '—';
+  // Reset analytics UI
+  document.getElementById('aloading').style.display = 'block';
+  document.getElementById('acontent').style.display = 'none';
+  // Go to invoices tab
+  go('invoices');
+  updTB();
+  populateVendorDropdown();
+  // Reload pending for new company
+  (async () => {
+    try {
+      const r = await authFetch(`${GMAIL}?company=${currentCompany}`, { method: 'GET' });
+      const d = await r.json();
+      const pending = d.invoices || [];
+      updPendingBadge(pending.length);
+      pending.forEach(inv => addInv({
+        id: inv.id, fn: inv.filename, b64: null,
+        from: inv.email_from, subj: inv.email_subject,
+        date: inv.email_date, src: 'gmail', st: 'pending'
+      }));
+    } catch {}
+  })();
+}
+
+function go(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('on'));
+  document.querySelectorAll('.sb-link.ntab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('on');
+  const tabs=['invoices','log','analytics','recon','settings'];const titles={invoices:'Invoices',log:'Bill Log',analytics:'Analytics',recon:'Reconcile',settings:'Settings'};
+  document.querySelectorAll('.sb-link.ntab')[tabs.indexOf(p)]?.classList.add('active');document.getElementById('topbar-title').textContent=titles[p]||p;
+  if(p==='settings') renderV();
+}
+
+// ── On load ──
+function updPendingBadge(count) {
+  const b = document.getElementById('pending-badge');
+  if (!b) return;
+  if (count > 0) { b.textContent = count; b.style.display = 'inline-block'; }
+  else { b.style.display = 'none'; }
+}
+
+window.addEventListener('load', () => {
+  if (apiKey) {
+    // Saved key — validate it then init
+    fetch(`${GMAIL}?company=USA`, { method: 'GET', headers: { 'X-API-Key': apiKey } })
+      .then(r => {
+        if (r.status === 401) { localStorage.removeItem('forest-api-key'); apiKey = ''; document.getElementById('login-overlay').style.display = 'flex'; }
+        else { document.getElementById('login-overlay').style.display = 'none'; initApp(); }
+      })
+      .catch(() => { document.getElementById('login-overlay').style.display = 'none'; initApp(); });
+  }
+  // If no key, login overlay is already visible
+});
+
+async function initApp() {
+  renderV();
+  populateVendorDropdown();
+  await loadCrossCompany();
+  try {
+    const r = await authFetch(`${GMAIL}?company=${currentCompany}`,{method:'GET'});
+    const d = await r.json();
+    const pending = d.invoices || [];
+    updPendingBadge(pending.length);
+    pending.forEach(inv => addInv({
+      id:inv.id, fn:inv.filename, b64:null,
+      from:inv.email_from, subj:inv.email_subject,
+      date:inv.email_date, src:'gmail', st:'pending'
+    }));
+  } catch(e){}
+  // Note: loadOverdue removed from auto-load — QB token refresh only happens on user action
+  // (Bill Log, Analytics, or Push). Overdue banner loads when user visits Bill Log or Analytics.
+}
+
+async function loadCrossCompany() {
+  for (const co of ['USA','EU','AU']) {
+    try {
+      const r = await authFetch(`${GMAIL}?company=${co}`, { method: 'GET' });
+      const d = await r.json();
+      const count = (d.invoices || []).length;
+      updateSidebarPending(co, count);
+    } catch (e) {}
+  }
+}
+
+async function loadOverdue() {
+  const banner = document.getElementById('overdue-banner');
+  try {
+    const r = await authFetch(`${FBILLS}?company=${currentCompany}`);
+    const d = await r.json();
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = (d.bills || []).filter(b => b.balance > 0 && b.due_date && b.due_date < today);
+    if (overdue.length > 0) {
+      const totalOverdue = overdue.reduce((s, b) => s + b.balance, 0);
+      document.getElementById('overdue-text').textContent = `${overdue.length} overdue bill${overdue.length > 1 ? 's' : ''}`;
+      document.getElementById('overdue-detail').textContent = `Total outstanding: ${ccy(totalOverdue)} · Oldest: ${overdue.sort((a,b) => a.due_date.localeCompare(b.due_date))[0]?.vendor || '—'}`;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch (e) { banner.style.display = 'none'; }
+}
+
+async function populateVendorDropdown(){
+  const sel = document.getElementById('manual-vendor-sel');
+  if(!sel) return;
+  // Start with system vendors (unique names)
+  const sysVendors = [...new Set((COMPANY_VENDORS[currentCompany]||[]).map(v=>v.name))];
+  let opts = '<option value="">Auto-detect vendor</option>';
+  sysVendors.forEach(n => { opts += `<option value="${n}">${n}</option>`; });
+  sel.innerHTML = opts;
+  // Add dynamic vendors async
+  try{
+    const r = await authFetch(`${VCONFIG}?company=${currentCompany}`);
+    const d = await r.json();
+    (d.vendors||[]).filter(v=>v.active).forEach(v => {
+      if(!sysVendors.includes(v.qb_name)) sel.innerHTML += `<option value="${v.qb_name}">${v.qb_name}</option>`;
+    });
+  }catch(e){}
+}
+
+// ── Drop zone ──
+const dzel=document.getElementById('dz'), fiel=document.getElementById('fi');
+dzel.addEventListener('dragover',e=>{e.preventDefault();dzel.style.borderColor='var(--y)';});
+dzel.addEventListener('dragleave',()=>dzel.style.borderColor='');
+dzel.addEventListener('drop',e=>{e.preventDefault();dzel.style.borderColor='';Array.from(e.dataTransfer.files).filter(f=>f.type==='application/pdf').forEach(af);});
+fiel.addEventListener('change',e=>{Array.from(e.target.files).forEach(af);fiel.value='';});
+async function af(file){
+  const b64=await b64f(file);
+  const vendorSel=document.getElementById('manual-vendor-sel');
+  const vendorHint=vendorSel?.value||'';
+  addInv({id:`m-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,fn:file.name,b64,from:vendorHint||'Manual',subj:file.name,date:new Date().toLocaleDateString(),src:'manual',st:'pending',vendorHint});
+}
+
+// ── Gmail ──
+async function scanGmail(rescan){
+  const btn=document.getElementById(rescan?'rbtn':'gbtn');btn.textContent='Scanning...';btn.disabled=true;
+  try{
+    const r=await authFetch(GMAIL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company:currentCompany,rescan:!!rescan})});
+    const scan=await r.json();
+
+    const r2=await authFetch(`${GMAIL}?company=${currentCompany}`,{method:'GET'});
+    const d2=await r2.json();
+    let n=0;
+    (d2.invoices||[]).forEach(inv=>{
+      if(!invs.find(i=>i.id===inv.id)){
+        addInv({id:inv.id,fn:inv.filename,b64:null,from:inv.email_from,subj:inv.email_subject,date:inv.email_date,src:'gmail',st:'pending'});
+        n++;
+      }
+    });
+    btn.textContent=n>0?`${n} found`:(scan.saved>0?`${scan.saved} saved`:'No new');
+  }catch(e){btn.textContent='Error';}
+  setTimeout(()=>{
+    document.getElementById('gbtn').innerHTML='<i data-lucide="mail"></i> Scan Gmail';document.getElementById('gbtn').disabled=false;
+    document.getElementById('rbtn').innerHTML='<i data-lucide="refresh-cw"></i> Rescan';document.getElementById('rbtn').disabled=false;
+    if(window.lucide)lucide.createIcons();
+  },3000);
+}
+
+// ── Add invoice row ──
+function addInv(inv){
+  if(invs.find(i=>i.id===inv.id)) return;
+  invs.push(inv);
+  const tb=document.getElementById('itbody');
+  tb.querySelector('.erow')?.remove();
+  const tr=document.createElement('tr');tr.id=`r-${inv.id}`;
+  tr.innerHTML=`
+    <td><input type="checkbox" class="ic" data-id="${inv.id}" onchange="onCk()" /></td>
+    <td><div class="fn">${inv.fn}</div><div class="fs">${inv.subj||''}</div></td>
+    <td><span class="src ${inv.src}">${inv.src}</span></td>
+    <td style="font-size:11px;color:var(--mu)">${(inv.from||'').replace(/<.*>/,'').trim()}</td>
+    <td style="font-size:11px;color:var(--mu)">${inv.date||''}</td>
+    <td><span class="st pending" id="s-${inv.id}">● Pending</span></td>
+    <td style="color:var(--o);font-size:12px" id="vn-${inv.id}">—</td>
+    <td style="font-size:11px;color:var(--mu)" id="in-${inv.id}">—</td>
+    <td class="amt" id="am-${inv.id}">—</td>
+    <td class="qbl" id="qb-${inv.id}">—</td>`;
+  tb.appendChild(tr);
+  const dr=document.createElement('tr');dr.id=`d-${inv.id}`;dr.className='dr';
+  dr.innerHTML=`<td class="dc" colspan="10"><div class="di" id="di-${inv.id}"></div></td>`;
+  tb.appendChild(dr);
+  updTB();
+}
+
+function setSt(id,cls,txt){const e=document.getElementById(`s-${id}`);if(e){e.className=`st ${cls}`;e.textContent=txt;}}
+
+// ── Checkboxes ──
+function togAll(v){document.querySelectorAll('.ic').forEach(cb=>{const inv=invs.find(i=>i.id===cb.dataset.id);if(inv&&inv.st!=='done'){cb.checked=v;}});onCk();}
+function onCk(){
+  const sel=getSel();const amt=sel.reduce((s,i)=>s+(i.ext?.total_amount||0),0);
+  document.getElementById('selcnt').textContent=sel.length;
+  document.getElementById('selamt').textContent=`$${amt.toFixed(2)}`;
+  document.getElementById('abar').style.display=sel.length>0?'flex':'none';
+  updTB();
+}
+function getSel(){return Array.from(document.querySelectorAll('.ic:checked')).map(cb=>invs.find(i=>i.id===cb.dataset.id)).filter(Boolean);}
+function selAll(){document.getElementById('cball').checked=true;togAll(true);}
+
+// ── Extract ──
+async function extractSel(){
+  const sel=getSel().filter(i=>i.st==='pending'||i.st==='error');
+  if(!sel.length) return;
+  lockB(true);
+  for(const inv of sel) await doExtract(inv);
+  lockB(false);updTB();onCk();
+}
+async function doExtract(inv){
+  inv.st='extracting';setSt(inv.id,'extracting','Extracting...');
+  try{
+    // Load base64 on demand if not already loaded (gmail scans don't include it)
+    if(!inv.b64 && inv.src==='gmail'){
+      setSt(inv.id,'extracting','Loading PDF...');
+      const pr=await authFetch(`${GMAIL}?company=${currentCompany}&id=${inv.id}`,{method:'GET'});
+      const pd=await pr.json();
+      if(pd.invoice?.pdf_base64) inv.b64=pd.invoice.pdf_base64;
+      else throw new Error('PDF not found in store');
+    }
+
+    // Try extraction with auto-retry on timeout
+    let d, ok=false;
+    for(let attempt=1;attempt<=2;attempt++){
+      setSt(inv.id,'extracting',attempt>1?'Retrying...':'Extracting...');
+      try{
+        const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'preview',company:currentCompany,vendor_hint:inv.vendorHint||''})});
+        const text=await r.text();
+        // Detect timeout HTML response
+        if(text.includes('Inactivity Timeout') || text.includes('<HTML>')){
+          if(attempt<2){continue;} else throw new Error('Timeout — invoice too complex. Try again.');
+        }
+        d=JSON.parse(text);
+        if(!r.ok) throw new Error(d.error||'Failed');
+        ok=true; break;
+      }catch(e){
+        if(attempt<2 && (e.message.includes('Timeout')||e.message.includes('timeout')||e.message.includes('HTML'))){continue;}
+        throw e;
+      }
+    }
+    if(!ok) throw new Error('Extraction failed after retry');
+
+    inv.st='extracted';inv.ext=d.extracted;
+    setSt(inv.id,'extracted','Extracted');
+    document.getElementById(`vn-${inv.id}`).textContent=d.extracted.vendor_name||'—';
+    document.getElementById(`in-${inv.id}`).textContent=d.extracted.invoice_number||'—';
+    document.getElementById(`am-${inv.id}`).textContent=`$${(d.extracted.total_amount||0).toFixed(2)}`;
+    const el=document.getElementById(`di-${inv.id}`);
+    if(el){
+      el.innerHTML=`
+        <div><div class="dll">Invoice Date</div><div class="dv">${d.extracted.invoice_date||'—'}</div></div>
+        <div><div class="dll">Due Date</div><div class="dv">${d.extracted.due_date||'—'}</div></div>
+        <div><div class="dll">Terms</div><div class="dv">${d.extracted.payment_terms||'Net 30'}</div></div>
+        <div><table class="mt"><thead><tr><th>QB Account</th><th>Description</th><th>Conf.</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+          ${(d.extracted.line_items||[]).map(l=>`<tr><td class="mac">${l.account}</td><td>${l.description}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      document.getElementById(`d-${inv.id}`)?.classList.add('open');
+    }
+    kset('ext',invs.filter(i=>i.st==='extracted').length);
+  }catch(e){inv.st='error';setSt(inv.id,'error',`${e.message.slice(0,35)}`);kset('err',++serr);}
+}
+
+// ── Push ──
+async function pushSel(){
+  const sel=getSel().filter(i=>i.st==='extracted');
+  if(!sel.length){alert('Extract invoices first');return;}
+  lockB(true);
+  for(const inv of sel) await doPush(inv);
+  lockB(false);updTB();onCk();
+}
+async function doPush(inv){
+  const d=inv.ext||{};
+  const dk=`${(d.vendor_name||'').toLowerCase()}-${(d.invoice_number||'').toLowerCase()}`;
+  if(pushed.has(dk)){inv.st='duplicate';setSt(inv.id,'duplicate','⚠ Duplicate');document.getElementById(`qb-${inv.id}`).textContent='Already pushed';return;}
+  inv.st='pushing';setSt(inv.id,'pushing','⏳ Pushing...');
+  try{
+    const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||''})});
+    const data=await r.json();if(!r.ok) throw new Error(data.error||'QB push failed');
+    inv.st='done';inv.bid=data.bill_id;inv.qurl=data.qb_url;
+    setSt(inv.id,'done','✓ In QB');
+    document.getElementById(`r-${inv.id}`)?.classList.add('done');
+    // Show normalized vendor name (what QB actually used)
+    const qbVendor = data.normalized_vendor || d.vendor_name || '—';
+    document.getElementById(`vn-${inv.id}`).innerHTML=`<span style="font-weight:600;color:var(--fc-success)">${qbVendor}</span>`;
+    document.getElementById(`qb-${inv.id}`).innerHTML=data.qb_url?`<a href="${data.qb_url}" target="_blank">#${data.bill_id} →</a>`:`#${data.bill_id}`;
+    pushed.add(dk);sdone++;stotal+=d.total_amount||0;
+    kset('done',sdone);kset('total',stotal);
+    if(inv.src==='gmail') authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'confirmed',bill_id:data.bill_id,qb_url:data.qb_url,company:currentCompany})}).catch(()=>{});
+    blog.unshift({at:new Date().toLocaleTimeString(),vendor:d.vendor_name,inv:d.invoice_number,idate:d.invoice_date,ddate:d.due_date,amt:d.total_amount||0,bid:data.bill_id,qurl:data.qb_url});
+    updLogBadge();
+  }catch(e){inv.st='error';setSt(inv.id,'error',`✗ ${e.message.slice(0,28)}`);kset('err',++serr);}
+}
+
+async function removeSel(){
+  const sel = getSel();
+  if(!sel.length) return;
+  sel.forEach(inv=>{
+    document.getElementById(`r-${inv.id}`)?.remove();
+    document.getElementById(`d-${inv.id}`)?.remove();
+    invs=invs.filter(i=>i.id!==inv.id);
+  });
+  for(const inv of sel){
+    if(inv.src==='gmail'){
+      try{ await authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'rejected',company:currentCompany})}); }catch(e){}
+    }
+  }
+  if(!invs.length) document.getElementById('itbody').innerHTML='<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
+  document.getElementById('cball').checked=false;
+  onCk();updTB();
+}
+
+async function clearAllInvoices(){
+  if(!invs.length) return;
+  if(!confirm(`Remove all ${invs.length} invoices from the queue?`)) return;
+  const toRemove = [...invs];
+  toRemove.forEach(inv=>{
+    document.getElementById(`r-${inv.id}`)?.remove();
+    document.getElementById(`d-${inv.id}`)?.remove();
+  });
+  invs = [];
+  for(const inv of toRemove){
+    if(inv.src==='gmail'){
+      try{ await authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'rejected',company:currentCompany})}); }catch(e){}
+    }
+  }
+  document.getElementById('itbody').innerHTML='<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
+  document.getElementById('cball').checked=false;
+  onCk();updTB();
+}
+
+function updTB(){
+  const p=invs.filter(i=>i.st==='pending').length;
+  const e=invs.filter(i=>i.st==='extracted').length;
+  const dn=invs.filter(i=>i.st==='done').length;
+  document.getElementById('selbtn').disabled=invs.length===0;
+  document.getElementById('exbtn').disabled=!invs.some(i=>i.st==='pending'||i.st==='error');
+  document.getElementById('pushbtn').disabled=!invs.some(i=>i.st==='extracted');
+  document.getElementById('clearbtn').style.display=invs.length>0?'inline-flex':'none';
+  document.getElementById('qinfo').textContent=invs.length>0?`${p} pending · ${e} extracted · ${dn} done`:'No invoices loaded';
+  kset('queue',invs.filter(i=>i.st!=='done').length);
+  updPendingBadge(p + e);
+}
+
+function lockB(v){['exbtn','pushbtn','gbtn'].forEach(id=>{const e=document.getElementById(id);if(e)e.disabled=v;});}
+function kset(k,v){const map={queue:'k-queue',ext:'k-ext',done:'k-done',err:'k-err',total:'k-total'};const e=document.getElementById(map[k]);if(!e)return;e.textContent=k==='total'?`$${Number(v).toLocaleString('en-US',{minimumFractionDigits:2})}`:v;}
+
+// ── LOG ──
+async function loadLogAndOverdue(){
+  const btn=document.getElementById('log-load-btn');
+  const st=document.getElementById('log-load-status');
+  btn.disabled=true; btn.textContent='⏳ Loading...';
+  st.textContent='Connecting to QuickBooks...';
+  try{
+    await loadLog();
+    await loadOverdue();
+    st.textContent=`Loaded ${blog.length} bills · ${new Date().toLocaleTimeString()}`;
+  }catch(e){
+    st.textContent=`Error: ${e.message.slice(0,40)}`;
+  }
+  btn.disabled=false; btn.textContent='🔄 Load from QuickBooks';
+}
+
+async function loadLog(){
+  if(dataLoaded){ renderLog(); return; }
+  document.getElementById('lnote').textContent='Loading...';
+  document.getElementById('ltbody').innerHTML='<tr><td colspan="7" class="le">Loading from QuickBooks...</td></tr>';
+  try{
+    const r=await authFetch(`${FBILLS}?company=${currentCompany}`);const d=await r.json();
+    (d.log||[]).forEach(b=>{
+      if(!blog.find(x=>x.inv===b.invoice_number&&x.vendor===b.vendor)){
+        blog.push({at:b.saved_at?new Date(b.saved_at).toLocaleDateString():'—',vendor:b.vendor,inv:b.invoice_number,idate:b.invoice_date,ddate:b.due_date,amt:b.total_amount||0,bid:b.bill_id,qurl:b.qb_url});
+      }
+    });
+    document.getElementById('lnote').textContent=`${blog.length} bills · QB + session`;
+  }catch(e){document.getElementById('lnote').textContent='Session only';}
+  renderLog();
+}
+
+function renderLog(){
+  const tb=document.getElementById('ltbody');
+  if(!blog.length){tb.innerHTML='<tr><td colspan="7" class="le">No bills imported yet</td></tr>';return;}
+  const tot=blog.reduce((s,b)=>s+b.amt,0);
+  const vs=new Set(blog.map(b=>b.vendor)).size;
+  document.getElementById('ln').textContent=blog.length;
+  document.getElementById('lamt').textContent=`$${tot.toLocaleString('en-US',{minimumFractionDigits:2})}`;
+  document.getElementById('lv').textContent=vs;
+  tb.innerHTML=blog.map(b=>`
+    <tr>
+      <td style="font-size:11px;color:var(--mu)">${b.at}</td>
+      <td style="font-weight:700;color:var(--fc-ink)">${b.vendor||'—'}</td>
+      <td style="color:var(--y);font-weight:600">${b.inv||'—'}</td>
+      <td style="color:var(--mu);font-size:11px">${b.idate||'—'}</td>
+      <td style="color:var(--mu);font-size:11px">${b.ddate||'—'}</td>
+      <td style="font-weight:700;color:var(--ok);text-align:right">$${b.amt.toFixed(2)}</td>
+      <td>${b.qurl?`<a href="${b.qurl}" target="_blank" style="color:var(--b);font-size:11px;text-decoration:none;border-bottom:1px solid rgba(149,181,206,.25)">#${b.bid} →</a>`:`#${b.bid||'—'}`}</td>
+    </tr>`).join('');
+}
+
+function updLogBadge(){const t=document.getElementById('tab-log');if(t)t.innerHTML=`📋 Bill Log${blog.length>0?`<span class="bn">${blog.length}</span>`:''}`;}
+
+// ── ANALYTICS ──
+async function loadAnalyticsManual(){
+  const btn=document.getElementById('analytics-load-btn');
+  const st=document.getElementById('analytics-load-status');
+  btn.disabled=true; btn.textContent='⏳ Loading...';
+  st.textContent='Connecting to QuickBooks...';
+  try{
+    dataLoaded=false;
+    await loadAnalytics();
+    await loadOverdue();
+    document.getElementById('afil-bar').style.display='flex';
+    st.textContent=`Loaded · ${new Date().toLocaleTimeString()}`;
+  }catch(e){
+    st.textContent=`Error: ${e.message.slice(0,40)}`;
+  }
+  btn.disabled=false; btn.textContent='🔄 Load from QuickBooks';
+}
+
+function forceRefresh(){ loadAnalyticsManual(); }
+
+async function loadAnalytics(){
+  if(dataLoaded){ applyF(); document.getElementById('aloading').style.display='none'; document.getElementById('acontent').style.display='block'; return; }
+  document.getElementById('aloading').style.display='block';
+  document.getElementById('acontent').style.display='none';
+  document.getElementById('anote').textContent='Loading from QB...';
+  try{
+    const r=await authFetch(`${FBILLS}?company=${currentCompany}`);const d=await r.json();
+    qbbills=d.bills||[];
+    const vs=[...new Set(qbbills.map(b=>b.vendor))].sort();
+    const vsel=document.getElementById('af-v');
+    vsel.innerHTML='<option value="">All Vendors</option>'+vs.map(v=>`<option value="${v}">${v}</option>`).join('');
+    // Populate month filter dynamically from data
+    const months=[...new Set(qbbills.map(b=>b.invoice_date?.slice(0,7)).filter(Boolean))].sort();
+    const msel=document.getElementById('af-m');
+    const mnames={1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+    msel.innerHTML='<option value="">All Months</option>'+months.map(m=>{
+      const [y,mo]=m.split('-');return `<option value="${m}">${mnames[parseInt(mo)]} ${y}</option>`;
+    }).join('');
+    document.getElementById('anote').textContent=`${qbbills.length} bills loaded`;
+    dataLoaded = true;
+    applyF();
+    document.getElementById('aloading').style.display='none';
+    document.getElementById('acontent').style.display='block';
+  }catch(e){document.getElementById('aloading').textContent=`Error: ${e.message}`;}
+}
+
+function applyF(){
+  const v=document.getElementById('af-v')?.value||'';
+  const t=document.getElementById('af-t')?.value||'';
+  const m=document.getElementById('af-m')?.value||'';
+  fbills=qbbills.filter(b=>{
+    if(v&&b.vendor!==v) return false;
+    if(m&&!b.invoice_date?.startsWith(m)) return false;
+    if(t&&!b.line_items?.some(l=>l.account?.includes(t))) return false;
+    return true;
+  });
+  renderA();
+}
+
+function renderA(){
+  const bills=fbills;
+  const tot=bills.reduce((s,b)=>s+b.total_amount,0);
+  const out=bills.reduce((s,b)=>s+b.balance,0);
+  const mx=bills.reduce((m,b)=>b.total_amount>m.total_amount?b:m,{total_amount:0,vendor:'—'});
+  const mos=[...new Set(bills.map(b=>b.invoice_date?.slice(0,7)))].length||1;
+  document.getElementById('ak-total').textContent=`$${tot.toLocaleString('en-US',{minimumFractionDigits:0})}`;
+  document.getElementById('ak-tsub').textContent=`${bills.length} bills`;
+  document.getElementById('ak-avg').textContent=`$${(tot/mos).toLocaleString('en-US',{minimumFractionDigits:0})}`;
+  document.getElementById('ak-max').textContent=`$${mx.total_amount.toLocaleString('en-US',{minimumFractionDigits:0})}`;
+  document.getElementById('ak-msub').textContent=mx.vendor;
+  document.getElementById('ak-out').textContent=`$${out.toLocaleString('en-US',{minimumFractionDigits:0})}`;
+  document.getElementById('acnt').textContent=`${bills.length} bills`;
+
+  // Monthly
+  const md={};bills.forEach(b=>{const m=b.invoice_date?.slice(0,7)||'?';md[m]=(md[m]||0)+b.total_amount;});
+  const mkeys=Object.keys(md).sort();
+  mkChart('c-monthly','bar',mkeys,[{label:'Spend',data:mkeys.map(m=>md[m]),backgroundColor:'rgba(27,32,61,0.75)',borderColor:'#1b203d',borderWidth:1}],
+    {scales:{y:{ticks:{callback:v=>`$${(v/1000).toFixed(0)}k`,color:'#5a5a55',font:{size:11}},grid:{color:'rgba(12,12,11,0.06)'}},x:{ticks:{color:'#5a5a55',font:{size:10}},grid:{display:false}}}});
+
+  // Type
+  const tm={Storage:0,'Handling':0,'Container':0,'Samples':0,Duties:0,Other:0};
+  bills.forEach(b=>(b.line_items||[]).forEach(l=>{
+    const a=l.account||'';
+    if(a.includes('Storage'))tm.Storage+=l.amount;
+    else if(a.includes('Handling'))tm.Handling+=l.amount;
+    else if(a.includes('Container'))tm.Container+=l.amount;
+    else if(a.includes('Samples'))tm.Samples+=l.amount;
+    else if(a.includes('Duties'))tm.Duties+=l.amount;
+    else tm.Other+=l.amount;
+  }));
+  const tlabs=Object.keys(tm).filter(k=>tm[k]>0);
+  mkChart('c-type','doughnut',tlabs,[{data:tlabs.map(k=>tm[k]),backgroundColor:['#95b5ce','#e7e244','#4caf7d','#c47820','#a8351c','#9a9a93'],borderWidth:0}],
+    {plugins:{legend:{position:'right',labels:{color:'#2a2a28',font:{size:11,family:'Montserrat'},padding:10}}}});
+
+  // Vendor
+  const vm={};bills.forEach(b=>{vm[b.vendor]=(vm[b.vendor]||0)+b.total_amount;});
+  const vt=Object.entries(vm).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('c-vendor','bar',vt.map(v=>v[0].split(' ').slice(0,2).join(' ')),
+    [{label:'Total',data:vt.map(v=>v[1]),backgroundColor:'rgba(149,181,206,0.7)',borderColor:'#5b85a3',borderWidth:1}],
+    {indexAxis:'y',scales:{x:{ticks:{callback:v=>`$${(v/1000).toFixed(0)}k`,color:'#5a5a55',font:{size:10}},grid:{color:'rgba(12,12,11,0.06)'}},y:{ticks:{color:'#2a2a28',font:{size:11}},grid:{display:false}}}});
+
+  // Ratio
+  mkChart('c-ratio','pie',['Storage','Handling','Container','Other'],
+    [{data:[tm.Storage,tm.Handling,tm.Container,tm.Other+tm.Samples+tm.Duties],backgroundColor:['#95b5ce','#e7e244','#4caf7d','#9a9a93'],borderWidth:0}],
+    {plugins:{legend:{position:'bottom',labels:{color:'#2a2a28',font:{size:10,family:'Montserrat'},padding:8}}}});
+
+  // Aging computation
+  const now=new Date();
+  const aging={current:{amt:0,n:0},mid:{amt:0,n:0},old:{amt:0,n:0},critical:{amt:0,n:0}};
+  const vendorAging={};
+  bills.forEach(b=>{
+    if((b.balance||0)<=0) return;
+    const due=new Date(b.due_date||b.invoice_date);
+    const days=Math.floor((now-due)/(1000*60*60*24));
+    let bucket='current';
+    if(days>90) bucket='critical';
+    else if(days>60) bucket='old';
+    else if(days>30) bucket='mid';
+    aging[bucket].amt+=b.balance;
+    aging[bucket].n++;
+    if(!vendorAging[b.vendor]) vendorAging[b.vendor]={current:0,mid:0,old:0,critical:0};
+    vendorAging[b.vendor][bucket]+=b.balance;
+  });
+  const fmt$=v=>'$'+Math.round(v).toLocaleString('en-US');
+  document.getElementById('ag-current').textContent=fmt$(aging.current.amt);
+  document.getElementById('ag-current-n').textContent=`${aging.current.n} bills`;
+  document.getElementById('ag-3160').textContent=fmt$(aging.mid.amt);
+  document.getElementById('ag-3160-n').textContent=`${aging.mid.n} bills`;
+  document.getElementById('ag-6190').textContent=fmt$(aging.old.amt);
+  document.getElementById('ag-6190-n').textContent=`${aging.old.n} bills`;
+  document.getElementById('ag-90').textContent=fmt$(aging.critical.amt);
+  document.getElementById('ag-90-n').textContent=aging.critical.n>0?`${aging.critical.n} bills — action required`:`0 bills`;
+  // Style 90+ cell as navy featured if there's overdue
+  const cell90=document.getElementById('ag-90-cell');
+  if(aging.critical.amt>0){cell90.classList.add('danger');cell90.querySelector('.aging-bar').style.background='var(--fc-yellow)';}
+  else{cell90.classList.remove('danger');cell90.querySelector('.aging-bar').style.background='var(--fc-ink-200)';}
+
+  // Vendor Balance table with aging pills
+  const vb={};
+  bills.forEach(b=>{
+    if(!vb[b.vendor]) vb[b.vendor]={total:0,balance:0,count:0};
+    vb[b.vendor].total+=b.total_amount;
+    vb[b.vendor].balance+=b.balance||0;
+    vb[b.vendor].count++;
+  });
+  const vbSorted=Object.entries(vb).sort((a,b)=>b[1].balance-a[1].balance);
+  const totalBalance=vbSorted.reduce((s,v)=>s+v[1].balance,0);
+  document.getElementById('vb-total-outstanding').textContent='$'+totalBalance.toLocaleString('en-US',{minimumFractionDigits:2});
+  const vbTbody=document.getElementById('vb-tbody');
+  if(vbTbody){
+    function agingPills(vendor){
+      const a=vendorAging[vendor];
+      if(!a) return '<span style="font-size:10px;color:var(--fc-success);font-weight:600">Paid</span>';
+      const pills=[];
+      if(a.current>0) pills.push(`<span class="aging-pill current">${fmt$(a.current)} 0-30d</span>`);
+      if(a.mid>0) pills.push(`<span class="aging-pill mid">${fmt$(a.mid)} 31-60d</span>`);
+      if(a.old>0) pills.push(`<span class="aging-pill old">${fmt$(a.old)} 61-90d</span>`);
+      if(a.critical>0) pills.push(`<span class="aging-pill critical">${fmt$(a.critical)} 90+</span>`);
+      return pills.length?`<div class="aging-pills">${pills.join('')}</div>`:'<span style="font-size:10px;color:var(--fc-success);font-weight:600">Paid</span>';
+    }
+    vbTbody.innerHTML=vbSorted.map(([name,v])=>`
+      <tr>
+        <td style="font-weight:600;color:var(--fc-ink)">${name}</td>
+        <td style="text-align:center;font-family:var(--fc-font-mono);font-size:11px;color:var(--fc-ink-500)">${v.count}</td>
+        <td style="text-align:right;font-family:var(--fc-font-mono);font-weight:600;color:var(--fc-ink)">$${v.total.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+        <td style="text-align:right;font-family:var(--fc-font-mono);font-weight:700;color:${v.balance>0?'var(--fc-danger)':'var(--fc-success)'}">$${v.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+        <td>${agingPills(name)}</td>
+      </tr>`).join('');
+    // Total aging pills
+    const totalPills=[];
+    if(aging.current.amt>0) totalPills.push(`<span class="aging-pill current">${fmt$(aging.current.amt)}</span>`);
+    if(aging.mid.amt>0) totalPills.push(`<span class="aging-pill mid">${fmt$(aging.mid.amt)}</span>`);
+    if(aging.old.amt>0) totalPills.push(`<span class="aging-pill old">${fmt$(aging.old.amt)}</span>`);
+    if(aging.critical.amt>0) totalPills.push(`<span class="aging-pill critical">${fmt$(aging.critical.amt)}</span>`);
+    vbTbody.innerHTML+=`<tr style="border-top:2px solid var(--fc-ink-200);font-weight:700">
+      <td style="color:var(--fc-navy);font-weight:800">TOTAL</td>
+      <td style="text-align:center;font-family:var(--fc-font-mono);font-size:11px;font-weight:700">${bills.length}</td>
+      <td style="text-align:right;font-family:var(--fc-font-mono);color:var(--fc-navy);font-weight:800">$${tot.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+      <td style="text-align:right;font-family:var(--fc-font-mono);color:var(--fc-danger);font-weight:800">$${totalBalance.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+      <td><div class="aging-pills">${totalPills.join('')}</div></td>
+    </tr>`;
+  }
+
+  // Table
+  const tb=document.getElementById('atbody');
+  tb.innerHTML=bills.map(b=>`
+    <tr>
+      <td style="color:var(--mu);font-size:11px">${b.invoice_date}</td>
+      <td style="font-weight:700;color:var(--fc-ink)">${b.vendor}</td>
+      <td style="color:var(--fc-navy);font-weight:600;font-size:11px">${b.invoice_number}</td>
+      <td style="color:var(--fc-ink-500);font-size:11px">${b.due_date||'—'}</td>
+      <td style="color:var(--fc-blue-700);font-size:11px">${[...new Set((b.line_items||[]).map(l=>l.account?.split(':').pop()))].join(', ')}</td>
+      <td style="font-family:var(--fc-font-mono);font-weight:700;color:var(--fc-navy);text-align:right">$${b.total_amount.toFixed(2)}</td>
+      <td style="text-align:right;font-family:var(--fc-font-mono);font-size:11px;color:${b.balance>0?'var(--fc-danger)':'var(--fc-success)'}">$${b.balance.toFixed(2)}</td>
+      <td>${b.qb_url?`<a href="${b.qb_url}" target="_blank" style="color:var(--fc-blue-700);font-size:11px;text-decoration:none;border-bottom:1px solid var(--fc-blue-200)">#${b.id} →</a>`:'—'}</td>
+    </tr>`).join('')||'<tr><td colspan="8" class="le">No bills match filters</td></tr>';
+}
+
+function mkChart(id,type,labels,datasets,opts={}){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id)?.getContext('2d');if(!ctx)return;
+  const options = Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:type!=='bar',labels:{color:'#2a2a28',font:{size:11,family:'Montserrat'}}}}}, opts);
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options});
+}
+
+// ── SETTINGS ──
+// ── RECONCILIATION ──
+let reconData = null; // { stmtLines, qbBills, results }
+
+// File upload handlers
+const reconDz = document.getElementById('recon-dz');
+const reconFi = document.getElementById('recon-fi');
+reconDz.addEventListener('dragover', e => { e.preventDefault(); reconDz.style.borderColor = 'var(--y)'; });
+reconDz.addEventListener('dragleave', () => reconDz.style.borderColor = '');
+reconDz.addEventListener('drop', e => { e.preventDefault(); reconDz.style.borderColor = ''; const f = Array.from(e.dataTransfer.files).find(f => f.type === 'application/pdf'); if (f) reconStart(f); });
+reconFi.addEventListener('change', e => { if (e.target.files[0]) reconStart(e.target.files[0]); reconFi.value = ''; });
+
+async function reconStart(file) {
+  // Step 1→2: Extract statement
+  document.getElementById('recon-step1').style.display = 'none';
+  document.getElementById('recon-step2').style.display = 'block';
+  document.getElementById('recon-step2-file').textContent = file.name;
+  document.getElementById('recon-results').style.display = 'none';
+
+  try {
+    const b64 = await b64f(file);
+    // Use Claude to extract statement data
+    const r = await authFetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdf_base64: b64, filename: file.name,
+        mode: 'statement', company: currentCompany
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Extraction failed');
+
+    const stmtData = d.extracted;
+    if (!stmtData?.invoices?.length) throw new Error('No invoices found in statement');
+
+    // Step 2→3: Load QB data
+    document.getElementById('recon-step2').style.display = 'none';
+    document.getElementById('recon-step3').style.display = 'block';
+
+    const qr = await authFetch(`${FBILLS}?company=${currentCompany}`);
+    const qd = await qr.json();
+    if (!qr.ok) throw new Error(qd.error || 'QB load failed');
+    const qbBills = qd.bills || [];
+
+    // Step 3→4: Reconcile
+    reconData = reconcile(stmtData, qbBills);
+    renderRecon();
+
+  } catch (e) {
+    alert('Reconciliation failed: ' + e.message);
+    reconReset();
+  }
+}
+
+function reconcile(stmtData, qbBills) {
+  const results = [];
+  const stmtVendor = stmtData.vendor_name || '—';
+  const stmtPeriod = stmtData.period || '—';
+  const now = new Date();
+
+  // Normalize invoice numbers: strip common prefixes (H-, INV-, INV) for matching
+  function normalizeInvNum(num) {
+    return (num || '').trim().toUpperCase().replace(/^(H-|INV-|INV|#)/i, '').trim();
+  }
+
+  // Normalize QB bills into lookup by normalized invoice number
+  const qbMap = {};
+  const qbMapOriginal = {}; // keep original number for display
+  for (const b of qbBills) {
+    const num = (b.invoice_number || '').trim().toUpperCase();
+    const norm = normalizeInvNum(num);
+    if (norm && norm !== '—') {
+      qbMap[norm] = b;
+      qbMapOriginal[norm] = num;
+    }
+  }
+
+  const matchedNorms = new Set();
+  let stmtTotal = 0;
+  let qbMatchedTotal = 0;
+
+  // Check each statement line against QB
+  for (const inv of stmtData.invoices) {
+    const rawNum = (inv.invoice_number || '').trim().toUpperCase();
+    const norm = normalizeInvNum(rawNum);
+    const stmtAmt = parseFloat(inv.amount) || 0;
+    stmtTotal += stmtAmt;
+
+    if (qbMap[norm]) {
+      const qb = qbMap[norm];
+      const qbAmt = qb.total_amount || 0;
+      const qbBalance = qb.balance ?? qbAmt;
+      const dueDate = qb.due_date || null;
+      const isOverdue = dueDate && new Date(dueDate) < now && qbBalance > 0;
+      const diff = Math.round((stmtAmt - qbAmt) * 100) / 100;
+      matchedNorms.add(norm);
+      qbMatchedTotal += qbAmt;
+
+      const displayNum = rawNum + (qbMapOriginal[norm] !== rawNum ? ` (QB: ${qbMapOriginal[norm]})` : '');
+      if (Math.abs(diff) < 0.01) {
+        results.push({ status: 'match', invoice: displayNum, date: inv.date || qb.invoice_date, dueDate, stmtAmt, qbAmt, qbBalance, diff: 0, overdue: isOverdue, note: '—' });
+      } else {
+        results.push({ status: 'mismatch', invoice: displayNum, date: inv.date || qb.invoice_date, dueDate, stmtAmt, qbAmt, qbBalance, diff, overdue: isOverdue, note: 'Amount differs — verify with vendor' });
+      }
+    } else {
+      results.push({ status: 'missing-qb', invoice: rawNum, date: inv.date || '—', dueDate: null, stmtAmt, qbAmt: null, qbBalance: null, diff: -stmtAmt, overdue: false, note: 'Not found in QB — upload needed' });
+    }
+  }
+
+  // Check QB bills not on statement (filter by vendor name match)
+  let qbUnmatchedTotal = 0;
+  const vendorLower = stmtVendor.toLowerCase();
+  for (const b of qbBills) {
+    const num = (b.invoice_number || '').trim().toUpperCase();
+    const norm = normalizeInvNum(num);
+    if (norm === '—' || !norm) continue;
+    const bVendor = (b.vendor || '').toLowerCase();
+    if (!bVendor.includes(vendorLower.split(' ')[0]?.toLowerCase())) continue;
+    // Skip paid bills (balance = 0) — they won't appear on statements
+    if ((b.balance || 0) <= 0) continue;
+    if (!matchedNorms.has(norm)) {
+      const dueDate = b.due_date || null;
+      const isOverdue = dueDate && new Date(dueDate) < now && (b.balance || 0) > 0;
+      qbUnmatchedTotal += b.total_amount || 0;
+      results.push({ status: 'missing-stmt', invoice: b.invoice_number, date: b.invoice_date, dueDate, stmtAmt: null, qbAmt: b.total_amount, qbBalance: b.balance, diff: b.total_amount, overdue: isOverdue, note: 'In QB (unpaid) but not on statement — verify' });
+    }
+  }
+
+  // QB Total = only matched + unmatched unpaid (not all historical bills)
+  const qbTotal = qbMatchedTotal + qbUnmatchedTotal;
+
+  // Sort: issues first, then matches
+  const order = { 'missing-qb': 0, 'mismatch': 1, 'missing-stmt': 2, 'match': 3 };
+  results.sort((a, b) => order[a.status] - order[b.status]);
+
+  return { vendor: stmtVendor, period: stmtPeriod, stmtTotal, qbTotal, results };
+}
+
+function renderRecon() {
+  document.getElementById('recon-step3').style.display = 'none';
+  document.getElementById('recon-results').style.display = 'block';
+
+  const d = reconData;
+  const cur = currentCompany === 'EU' ? '€' : (currentCompany === 'AU' ? 'A$' : '$');
+  const fmt = v => v == null ? '—' : `${cur}${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
+  document.getElementById('rc-vendor').textContent = d.vendor;
+  document.getElementById('rc-period').textContent = d.period;
+  document.getElementById('rc-stmt-total').textContent = fmt(d.stmtTotal);
+  document.getElementById('rc-qb-total').textContent = fmt(d.qbTotal);
+  const totalDiff = Math.round((d.stmtTotal - d.qbTotal) * 100) / 100;
+  const diffEl = document.getElementById('rc-diff');
+  diffEl.textContent = (totalDiff >= 0 ? '+' : '-') + fmt(Math.abs(totalDiff));
+  diffEl.style.color = Math.abs(totalDiff) < 0.01 ? 'var(--ok)' : 'var(--er)';
+
+  const counts = { match: 0, mismatch: 0, 'missing-qb': 0, 'missing-stmt': 0 };
+  d.results.forEach(r => counts[r.status]++);
+  document.getElementById('rc-matched').textContent = counts.match;
+  document.getElementById('rc-mismatch').textContent = counts.mismatch;
+  document.getElementById('rc-missing-qb').textContent = counts['missing-qb'];
+  document.getElementById('rc-missing-stmt').textContent = counts['missing-stmt'];
+
+  reconRenderTable(d.results);
+  document.getElementById('rc-timestamp').textContent = `Reconciled at ${new Date().toLocaleTimeString()} · ${new Date().toLocaleDateString()}`;
+}
+
+function reconRenderTable(rows, filter) {
+  const cur = currentCompany === 'EU' ? '€' : (currentCompany === 'AU' ? 'A$' : '$');
+  const fmt = v => v == null ? '—' : `${cur}${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  const filtered = filter === 'issues' ? rows.filter(r => r.status !== 'match') : rows;
+
+  const badges = {
+    'match': '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;background:rgba(76,175,125,.12);color:var(--ok)"><span style="width:5px;height:5px;border-radius:50%;background:var(--ok)"></span>Match</span>',
+    'mismatch': '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;background:rgba(230,168,23,.12);color:var(--wa)"><span style="width:5px;height:5px;border-radius:50%;background:var(--wa)"></span>Mismatch</span>',
+    'missing-qb': '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;background:rgba(224,82,82,.12);color:var(--er)"><span style="width:5px;height:5px;border-radius:50%;background:var(--er)"></span>Missing QB</span>',
+    'missing-stmt': '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;background:rgba(149,181,206,.12);color:var(--b)"><span style="width:5px;height:5px;border-radius:50%;background:var(--b)"></span>Missing Stmt</span>',
+  };
+  const overdueBadge = '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-size:8px;font-weight:700;text-transform:uppercase;background:var(--fc-navy);color:var(--fc-yellow);margin-left:4px">Overdue</span>';
+  const colors = { 'match': 'var(--ok)', 'mismatch': 'var(--wa)', 'missing-qb': 'var(--er)', 'missing-stmt': 'var(--b)' };
+  const bgs = { 'match': '', 'mismatch': 'background:rgba(230,168,23,.04)', 'missing-qb': 'background:rgba(224,82,82,.04)', 'missing-stmt': 'background:rgba(149,181,206,.04)' };
+
+  const tb = document.getElementById('rc-tbody');
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--mu);font-size:12px">No items to show</td></tr>'; return; }
+
+  tb.innerHTML = filtered.map(r => {
+    const diffStr = r.diff === 0 ? `<span style="color:var(--ok);font-size:10px;font-weight:600">$0.00</span>` :
+      `<span style="color:${r.diff < 0 ? 'var(--er)' : 'var(--b)'};font-size:10px;font-weight:600">${r.diff < 0 ? '-' : '+'}${fmt(Math.abs(r.diff))}</span>`;
+    const balStr = r.qbBalance != null ? `<span style="color:${r.qbBalance > 0 ? 'var(--fc-danger)' : 'var(--fc-success)'}">` + fmt(r.qbBalance) + '</span>' : '—';
+    const dueDateStr = r.dueDate ? `<span style="color:${r.overdue ? 'var(--fc-danger);font-weight:600' : 'var(--fc-ink-500)'}">${r.dueDate}</span>` : '—';
+    const noteWithOverdue = (r.note || '—') + (r.overdue ? ' ' + overdueBadge : '');
+    return `<tr style="${bgs[r.status]}">
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br)">${badges[r.status]}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-weight:600;color:${colors[r.status]}">${r.invoice || '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);color:var(--mu);font-size:11px">${r.date || '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px">${dueDateStr}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-family:var(--fc-font-mono);font-weight:700;text-align:right;color:${r.stmtAmt != null ? colors[r.status] : 'var(--mu)'}">${r.stmtAmt != null ? fmt(r.stmtAmt) : '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-family:var(--fc-font-mono);font-weight:700;text-align:right;color:${r.qbAmt != null ? colors[r.status] : 'var(--mu)'}">${r.qbAmt != null ? fmt(r.qbAmt) : '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-family:var(--fc-font-mono);font-weight:600;text-align:right;font-size:11px">${balStr}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);text-align:right">${diffStr}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:10px;color:${colors[r.status]}">${noteWithOverdue}</td>
+    </tr>`;
+  }).join('');
+}
+
+function reconFilter(mode) { if (reconData) reconRenderTable(reconData.results, mode); }
+
+function reconReset() {
+  reconData = null;
+  document.getElementById('recon-step1').style.display = 'block';
+  document.getElementById('recon-step2').style.display = 'none';
+  document.getElementById('recon-step3').style.display = 'none';
+  document.getElementById('recon-results').style.display = 'none';
+}
+
+async function reconExportPDF() {
+  if (!reconData) return;
+  const cur = currentCompany === 'EU' ? '€' : (currentCompany === 'AU' ? 'A$' : '$');
+  const fmt = v => v == null ? '—' : `${cur}${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  const d = reconData;
+  const totalDiff = Math.round((d.stmtTotal - d.qbTotal) * 100) / 100;
+  const counts = { match: 0, mismatch: 0, 'missing-qb': 0, 'missing-stmt': 0 };
+  d.results.forEach(r => counts[r.status]++);
+
+  const statusLabel = { match: 'Match', mismatch: 'Mismatch', 'missing-qb': 'Missing in QB', 'missing-stmt': 'Missing in Stmt' };
+  const rows = d.results.map(r => {
+    const overdueTag = r.overdue ? ' <span style="background:#1b203d;color:#e7e244;padding:1px 5px;border-radius:8px;font-size:7px;font-weight:700">OVERDUE</span>' : '';
+    return `<tr><td>${statusLabel[r.status]}</td><td>${r.invoice}</td><td>${r.date||'—'}</td><td>${r.dueDate||'—'}</td><td style="text-align:right">${r.stmtAmt!=null?fmt(r.stmtAmt):'—'}</td><td style="text-align:right">${r.qbAmt!=null?fmt(r.qbAmt):'—'}</td><td style="text-align:right">${r.qbBalance!=null?fmt(r.qbBalance):'—'}</td><td style="text-align:right">${r.diff===0?'$0.00':(r.diff<0?'-':'+') + fmt(Math.abs(r.diff))}</td><td>${(r.note||'—') + overdueTag}</td></tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reconciliation Report</title>
+  <style>body{font-family:Montserrat,sans-serif;padding:24px;color:#1b203d;font-size:11px}
+  h1{font-size:16px;margin-bottom:4px} .sub{color:#8b90a8;margin-bottom:16px;font-size:10px}
+  .meta{display:flex;gap:24px;margin-bottom:16px;padding:10px;background:#f5f6fa;border-radius:6px}
+  .meta div{} .meta .label{font-size:8px;font-weight:700;text-transform:uppercase;color:#8b90a8;margin-bottom:2px} .meta .val{font-size:13px;font-weight:700}
+  .kpis{display:flex;gap:16px;margin-bottom:16px}
+  .kpi{padding:8px 14px;border-radius:6px;text-align:center;flex:1}
+  .kpi .num{font-size:18px;font-weight:800} .kpi .lbl{font-size:8px;font-weight:700;text-transform:uppercase;color:#8b90a8}
+  table{width:100%;border-collapse:collapse;font-size:9px;margin-bottom:16px}
+  th{background:#1b203d;color:#fff;padding:5px 6px;text-align:left;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:4px 6px;border-bottom:1px solid #e0e2ea}
+  .footer{font-size:9px;color:#8b90a8;margin-top:16px;text-align:center}
+  @media print{body{padding:12px}}
+  </style></head><body>
+  <h1>FOREST · BILLS — Statement Reconciliation</h1>
+  <div class="sub">${COMPANY_INFO[currentCompany]?.entity || currentCompany} · Generated ${new Date().toLocaleString()}</div>
+  <div class="meta">
+    <div><div class="label">Vendor</div><div class="val">${d.vendor}</div></div>
+    <div><div class="label">Period</div><div class="val">${d.period}</div></div>
+    <div><div class="label">Statement Total</div><div class="val">${fmt(d.stmtTotal)}</div></div>
+    <div><div class="label">QB Total</div><div class="val">${fmt(d.qbTotal)}</div></div>
+    <div><div class="label">Difference</div><div class="val" style="color:${Math.abs(totalDiff)<0.01?'#4caf7d':'#e05252'}">${(totalDiff>=0?'+':'-')}${fmt(Math.abs(totalDiff))}</div></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi" style="background:rgba(76,175,125,.08)"><div class="num" style="color:#4caf7d">${counts.match}</div><div class="lbl">Matched</div></div>
+    <div class="kpi" style="background:rgba(230,168,23,.08)"><div class="num" style="color:#e6a817">${counts.mismatch}</div><div class="lbl">Mismatch</div></div>
+    <div class="kpi" style="background:rgba(224,82,82,.08)"><div class="num" style="color:#e05252">${counts['missing-qb']}</div><div class="lbl">Missing QB</div></div>
+    <div class="kpi" style="background:rgba(149,181,206,.08)"><div class="num" style="color:#95b5ce">${counts['missing-stmt']}</div><div class="lbl">Missing Stmt</div></div>
+  </div>
+  <table><thead><tr><th>Status</th><th>Invoice #</th><th>Date</th><th>Due Date</th><th style="text-align:right">Stmt Amt</th><th style="text-align:right">QB Amt</th><th style="text-align:right">QB Bal</th><th style="text-align:right">Diff</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">Forest Bills · Statement Reconciliation · ${COMPANY_INFO[currentCompany]?.entity || ''}</div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+}
+
+const VCONFIG = '/.netlify/functions/vendor-config';
+const QB_ACCOUNTS = ['Storage','Shipping, Freight & Delivery:Handling & Loadout','Shipping, Freight & Delivery:Container costs','Shipping and delivery expense','Shipping, Freight & Delivery:Samples request','Shipping, Freight & Delivery:Duties','Clearance expense','Container Carry out cost','Storage GBP','Shipping GBP'];
+
+// Wizard state
+let wizEmails = [];
+let wizFileB64 = null;
+let wizFileName = '';
+let wizExtracted = null;
+
+async function renderV(){
+  const vendors = COMPANY_VENDORS[currentCompany] || [];
+  const info = COMPANY_INFO[currentCompany] || {};
+  document.getElementById('settings-co-label').textContent = `${info.flag || ''} ${currentCompany}`;
+
+  // Load dynamic vendors from backend
+  let dynamicVendors = [];
+  let systemOverrides = {};
+  try {
+    const r = await authFetch(`${VCONFIG}?company=${currentCompany}`);
+    const d = await r.json();
+    dynamicVendors = d.vendors || [];
+  } catch(e) {}
+  try {
+    const r = await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'get-system-overrides'})});
+    const d = await r.json();
+    systemOverrides = d.overrides || {};
+  } catch(e) {}
+
+  // Build unified vendor list
+  const container = document.getElementById('vendor-list-container');
+  let html = '';
+
+  // Group hardcoded vendors by name
+  const grouped = {};
+  vendors.forEach(v => {
+    if (!grouped[v.name]) grouped[v.name] = [];
+    grouped[v.name].push(v.email);
+  });
+
+  // Hardcoded vendors (grouped)
+  Object.entries(grouped).forEach(([name, emails]) => {
+    const overrideEmails = systemOverrides[name] || [];
+    const allEmails = [...emails, ...overrideEmails];
+    const sysEmailTags = emails.map(e => `<span class="form-tag" style="margin:2px;background:var(--fc-ink-100);color:var(--fc-ink-500)">${e}</span>`).join('');
+    const overrideEmailTags = overrideEmails.map(e => `<span class="form-tag" style="margin:2px">${e}<span class="x" onclick="sysRemoveEmail('${name.replace(/'/g,"\\'")}','${e}')">×</span></span>`).join('');
+    html += `<div class="vendor-item" style="flex-wrap:wrap">
+      <div class="vi-dot" style="background:var(--fc-navy)"></div>
+      <div class="vi-info"><div class="vi-name">${name} <span class="vi-type hardcoded">System</span></div><div class="vi-email">${allEmails.join(', ')}</div></div>
+      <span class="vi-badge">Active</span>
+      <button class="btn bb bsm" style="margin-left:6px;padding:3px 8px;font-size:9px" onclick="sysToggleEdit('${name.replace(/'/g,"\\'")}')"><i data-lucide="pencil" style="width:10px;height:10px"></i></button>
+      <div id="sysedit-${name.replace(/[^a-zA-Z0-9]/g,'_')}" style="display:none;width:100%;padding:12px 0 4px 20px;border-top:1px solid var(--fc-ink-100);margin-top:8px">
+        <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:6px">Emails (system emails cannot be removed)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${sysEmailTags}${overrideEmailTags}</div>
+        <div style="display:flex;gap:6px"><input class="form-input" id="sysnewemail-${name.replace(/[^a-zA-Z0-9]/g,'_')}" placeholder="new@vendor.com" style="flex:1;padding:7px 10px;font-size:11px" data-vendor="${name.replace(/"/g,'&quot;')}" onkeydown="if(event.key==='Enter'){event.preventDefault();sysAddEmail(this.dataset.vendor)}" /><button class="btn by bsm" onclick="sysAddEmail('${name.replace(/'/g,"\\'")}')">Add</button></div>
+      </div>
+    </div>`;
+  });
+
+  // Dynamic vendors
+  dynamicVendors.forEach(v => {
+    const emails = (v.emails || []).join(', ');
+    const accounts = (v.line_rules || []).map(r => r.account?.split(':').pop()).join(', ') || 'Default';
+    const emailTags = (v.emails || []).map(e => `<span class="form-tag" style="margin:2px">${e}<span class="x" onclick="wizRemoveVendorEmail('${v.id}','${e}')">×</span></span>`).join('');
+    html += `<div class="vendor-item" style="${v.active ? '' : 'opacity:.5'};flex-wrap:wrap">
+      <div class="vi-dot" style="background:var(--fc-yellow);box-shadow:0 0 6px var(--fc-yellow)"></div>
+      <div class="vi-info">
+        <div class="vi-name">${v.qb_name} <span class="vi-type dynamic">Custom</span></div>
+        <div class="vi-email">${emails}</div>
+        <div class="vi-account">${accounts}</div>
+      </div>
+      <span class="vi-badge">${v.active ? 'Active' : 'Inactive'}</span>
+      <button class="btn bb bsm" style="margin-left:6px;padding:3px 8px;font-size:9px" onclick="wizToggleEdit('${v.id}')"><i data-lucide="pencil" style="width:10px;height:10px"></i></button>
+      <button class="btn ber bsm" style="padding:3px 8px;font-size:9px" onclick="wizDeleteVendor('${v.id}')"><i data-lucide="trash-2" style="width:10px;height:10px"></i></button>
+      <div id="edit-${v.id}" style="display:none;width:100%;padding:12px 0 4px 20px;border-top:1px solid var(--fc-ink-100);margin-top:8px">
+        <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:var(--fc-ls-eyebrow);text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:6px">Emails</div>
+        <div id="tags-${v.id}" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${emailTags}</div>
+        <div style="display:flex;gap:6px"><input class="form-input" id="newemail-${v.id}" placeholder="new@vendor.com" style="flex:1;padding:7px 10px;font-size:11px" onkeydown="if(event.key==='Enter'){event.preventDefault();wizAddVendorEmail('${v.id}')}" /><button class="btn by bsm" onclick="wizAddVendorEmail('${v.id}')">Add</button></div>
+      </div>
+    </div>`;
+  });
+
+  if (!html) html = '<div style="padding:20px;text-align:center;color:var(--fc-ink-500);font-size:12px">No vendors configured</div>';
+  container.innerHTML = html;
+
+  // Company info
+  document.getElementById('settings-company-info').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:3px">Entity</div><div style="font-size:13px;font-weight:700">${info.entity || '—'}</div></div>
+      <div><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:3px">Currency</div><div style="font-size:13px;font-weight:700">${info.currency || '—'}</div></div>
+      <div><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:3px">Location</div><div style="font-size:13px;font-weight:700">${info.location || '—'}</div></div>
+      <div><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:3px">Vendors</div><div style="font-size:13px;font-weight:700">${vendors.length + dynamicVendors.length}</div></div>
+    </div>`;
+
+  if(window.lucide) lucide.createIcons();
+}
+
+function showWizard(){
+  document.getElementById('vendor-admin').style.display='none';
+  document.getElementById('vendor-wizard').style.display='block';
+  document.getElementById('wiz-company').value = currentCompany;
+  wizGo(1);
+}
+function hideWizard(){
+  document.getElementById('vendor-wizard').style.display='none';
+  document.getElementById('vendor-admin').style.display='block';
+  renderV();
+}
+function wizReset(){
+  wizEmails=[];wizFileB64=null;wizFileName='';wizExtracted=null;
+  document.getElementById('wiz-qb-name').value='';
+  document.getElementById('wiz-email-input').value='';
+  document.getElementById('wiz-email-tags').innerHTML='';
+  document.getElementById('wiz-file-preview').style.display='none';
+  document.getElementById('wiz-file-preview').innerHTML='';
+  document.getElementById('wiz-analyze-btn').disabled=true;
+  document.getElementById('wiz-extract-result').style.display='none';
+}
+function wizGo(n){
+  document.querySelectorAll('.wiz-page').forEach(p=>p.style.display='none');
+  const page = document.getElementById('wiz-'+n);
+  if(page) page.style.display='block';
+  // Update step indicators
+  document.querySelectorAll('#wiz-steps > div').forEach((s,i)=>{
+    const num = s.querySelector('.wiz-num') || s.querySelector('span');
+    const label = s.querySelectorAll('span')[1];
+    if(i < n-1){ num.style.borderColor='var(--fc-success)';num.style.background='var(--fc-success)';num.style.color='#fff';if(label)label.style.color='var(--fc-success)';s.style.background='rgba(77,124,47,.04)'; }
+    else if(i === n-1){ num.style.borderColor='var(--fc-navy)';num.style.background='var(--fc-navy)';num.style.color='var(--fc-yellow)';if(label)label.style.color='var(--fc-navy)';s.style.background='var(--fc-cream)'; }
+    else{ num.style.borderColor='var(--fc-ink-200)';num.style.background='transparent';num.style.color='var(--fc-ink-300)';if(label)label.style.color='var(--fc-ink-300)';s.style.background='#fff'; }
+  });
+  if(window.lucide) lucide.createIcons();
+}
+function wizAddEmail(){
+  const input = document.getElementById('wiz-email-input');
+  const email = input.value.trim().toLowerCase();
+  if(!email || !email.includes('@') || wizEmails.includes(email)) return;
+  wizEmails.push(email);
+  input.value='';
+  wizRenderEmails();
+}
+function wizRemoveEmail(email){
+  wizEmails = wizEmails.filter(e=>e!==email);
+  wizRenderEmails();
+}
+function wizRenderEmails(){
+  document.getElementById('wiz-email-tags').innerHTML = wizEmails.map(e=>
+    `<span class="form-tag">${e}<span class="x" onclick="wizRemoveEmail('${e}')">×</span></span>`
+  ).join('');
+}
+
+// File upload + toggle handlers
+document.addEventListener('DOMContentLoaded', ()=>{
+  const fi = document.getElementById('wiz-file-input');
+  if(fi) fi.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    wizFileName = file.name;
+    wizFileB64 = await b64f(file);
+    document.getElementById('wiz-file-preview').style.display='flex';
+    document.getElementById('wiz-file-preview').innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--fc-cream);border:1px solid var(--fc-ink-100);border-radius:8px">
+        <div style="width:36px;height:36px;background:var(--fc-danger);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--fc-font-display);font-size:9px;font-weight:800;flex-shrink:0">PDF</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${file.name}</div><div style="font-size:10px;color:var(--fc-ink-500)">${(file.size/1024).toFixed(0)} KB</div></div>
+        <i data-lucide="check-circle" style="width:18px;height:18px;color:var(--fc-success)"></i>
+      </div>`;
+    document.getElementById('wiz-analyze-btn').disabled=false;
+    if(window.lucide) lucide.createIcons();
+  });
+  // Toggle visual handlers
+  ['wiz-opt-invonly','wiz-opt-combine'].forEach(id=>{
+    const cb=document.getElementById(id);
+    if(!cb) return;
+    const bg=document.getElementById(id+'-bg'), dot=document.getElementById(id+'-dot');
+    function upd(){if(cb.checked){bg.style.background='var(--fc-success)';dot.style.left='20px';}else{bg.style.background='var(--fc-ink-200)';dot.style.left='2px';}}
+    cb.parentElement.addEventListener('click',()=>{cb.checked=!cb.checked;upd();});
+    upd();
+  });
+});
+
+async function wizAnalyze(){
+  if(!wizFileB64) return;
+  wizGo(3);
+  document.getElementById('wiz-extract-loading').style.display='block';
+  document.getElementById('wiz-extract-result').style.display='none';
+  try{
+    const company = document.getElementById('wiz-company').value;
+    const r = await authFetch(API, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pdf_base64:wizFileB64, filename:wizFileName, company, extract_only:true})
+    });
+    const d = await r.json();
+    if(!d.extracted) throw new Error(d.error || 'Extraction failed');
+    wizExtracted = d.extracted;
+
+    // Render metadata
+    const cur = company==='EU'?'€':(company==='AU'?'A$':'$');
+    document.getElementById('wiz-extract-meta').innerHTML = `
+      <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);padding-top:3px">Vendor</div><div style="font-size:13px;font-weight:600">${d.extracted.vendor_name||'—'}</div>
+      <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);padding-top:3px">Invoice #</div><div style="font-family:var(--fc-font-mono);font-size:13px;font-weight:600">${d.extracted.invoice_number||'—'}</div>
+      <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);padding-top:3px">Date</div><div style="font-size:13px;font-weight:600">${d.extracted.invoice_date||'—'}</div>
+      <div style="font-family:var(--fc-font-display);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);padding-top:3px">Total</div><div style="font-family:var(--fc-font-mono);font-size:13px;font-weight:600;color:var(--fc-navy)">${cur}${(d.extracted.total_amount||0).toFixed(2)}</div>`;
+
+    // Render line items with dropdowns
+    const lines = d.extracted.line_items || [{description:'Total',amount:d.extracted.total_amount,account:'Shipping and delivery expense'}];
+    const acctOpts = QB_ACCOUNTS.map(a=>`<option value="${a}">${a.split(':').pop()}</option>`).join('');
+    document.getElementById('wiz-lines-tbody').innerHTML = lines.map((l,i)=>{
+      const selected = l.account || 'Shipping and delivery expense';
+      return `<tr>
+        <td><input type="checkbox" checked class="wiz-line-cb" data-idx="${i}" style="width:14px;height:14px;accent-color:var(--fc-navy)" /></td>
+        <td style="font-weight:500">${l.description||'—'}</td>
+        <td><select class="form-input wiz-line-acct" data-idx="${i}" style="padding:6px 28px 6px 10px;font-size:11px">${QB_ACCOUNTS.map(a=>`<option value="${a}" ${a===selected?'selected':''}>${a.split(':').pop()}</option>`).join('')}</select></td>
+        <td style="font-family:var(--fc-font-mono);font-weight:600;color:var(--fc-navy);text-align:right">${cur}${(l.amount||0).toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('wiz-extract-loading').style.display='none';
+    document.getElementById('wiz-extract-result').style.display='block';
+  }catch(e){
+    document.getElementById('wiz-extract-loading').innerHTML=`<div style="color:var(--fc-danger)">Error: ${e.message}</div><button class="btn bb" style="margin-top:12px" onclick="wizGo(2)">Try Again</button>`;
+  }
+}
+
+async function wizSave(){
+  const company = document.getElementById('wiz-company').value;
+  const qbName = document.getElementById('wiz-qb-name').value.trim();
+  if(!qbName){alert('Enter the QB vendor name');wizGo(1);return;}
+  if(!wizEmails.length){alert('Add at least one email');wizGo(1);return;}
+
+  // Build line rules from the table
+  const lineRules = [];
+  document.querySelectorAll('.wiz-line-cb:checked').forEach(cb=>{
+    const idx = cb.dataset.idx;
+    const acct = document.querySelector(`.wiz-line-acct[data-idx="${idx}"]`)?.value;
+    const desc = wizExtracted?.line_items?.[idx]?.description || 'Total';
+    if(acct) lineRules.push({pattern: desc.toLowerCase(), account: acct});
+  });
+
+  const invOnly = document.getElementById('wiz-opt-invonly')?.checked || false;
+  const combine = document.getElementById('wiz-opt-combine')?.checked !== false;
+
+  try{
+    const r = await authFetch(VCONFIG+'?company='+company, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'add',
+        vendor:{
+          qb_name: qbName,
+          emails: wizEmails,
+          currency: document.getElementById('wiz-currency').value || null,
+          payment_terms: document.getElementById('wiz-terms').value,
+          line_rules: lineRules,
+          options:{invoice_only_filename:invOnly, combine_lines:combine}
+        }
+      })
+    });
+    const d = await r.json();
+    if(!d.success) throw new Error(d.error || 'Save failed');
+
+    // Show success
+    document.getElementById('wiz-success-msg').textContent=`${qbName} is now active for ${COMPANY_INFO[company]?.entity||company}. The system will automatically scan, extract, and map invoices from this vendor.`;
+    const rules = lineRules.map(r=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--fc-ink-100);font-size:12px"><span style="color:var(--fc-ink-500)">"${r.pattern}"</span><span style="color:var(--fc-ink-300)">→</span><span style="font-weight:600;color:var(--fc-navy)">${r.account.split(':').pop()}</span></div>`).join('');
+    document.getElementById('wiz-success-summary').innerHTML=`
+      <div style="font-family:var(--fc-font-display);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fc-ink-500);margin-bottom:10px">Configuration Summary</div>
+      <div style="background:var(--fc-cream);border:1px solid var(--fc-ink-100);border-radius:8px;padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--fc-ink-100);font-size:12px"><span style="color:var(--fc-ink-500)">Company</span><span style="font-weight:600;color:var(--fc-navy)">${COMPANY_INFO[company]?.entity||company}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--fc-ink-100);font-size:12px"><span style="color:var(--fc-ink-500)">QB Vendor</span><span style="font-weight:600;color:var(--fc-navy)">${qbName}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--fc-ink-100);font-size:12px"><span style="color:var(--fc-ink-500)">Emails</span><span style="font-weight:600">${wizEmails.length} addresses</span></div>
+        ${rules}
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px"><span style="color:var(--fc-ink-500)">Invoice-only filter</span><span style="font-weight:600;color:${invOnly?'var(--fc-success)':'var(--fc-ink-300)'}">${invOnly?'On':'Off'}</span></div>
+      </div>`;
+    wizGo(4);
+    if(window.lucide) lucide.createIcons();
+  }catch(e){
+    alert('Error saving vendor: '+e.message);
+  }
+}
+
+async function wizDeleteVendor(id){
+  if(!confirm('Remove this vendor configuration?')) return;
+  try{
+    await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'delete', id})
+    });
+    renderV();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+// System vendor email overrides
+function sysToggleEdit(name){
+  const id = 'sysedit-'+name.replace(/[^a-zA-Z0-9]/g,'_');
+  const el = document.getElementById(id);
+  if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function sysAddEmail(name){
+  const id = 'sysnewemail-'+name.replace(/[^a-zA-Z0-9]/g,'_');
+  const input = document.getElementById(id);
+  const email = input.value.trim().toLowerCase();
+  if(!email || !email.includes('@')) return;
+  try{
+    await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'add-system-email', vendor_name:name, email})
+    });
+    input.value='';
+    renderV();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+async function sysRemoveEmail(name, email){
+  try{
+    await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'remove-system-email', vendor_name:name, email})
+    });
+    renderV();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+function wizToggleEdit(id){
+  const el = document.getElementById('edit-'+id);
+  if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function wizAddVendorEmail(id){
+  const input = document.getElementById('newemail-'+id);
+  const email = input.value.trim().toLowerCase();
+  if(!email || !email.includes('@')) return;
+  try{
+    const r = await authFetch(VCONFIG+'?company='+currentCompany);
+    const d = await r.json();
+    const vendor = (d.vendors||[]).find(v=>v.id===id);
+    if(!vendor) return;
+    if(vendor.emails.includes(email)){input.value='';return;}
+    const updated = [...vendor.emails, email];
+    await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'update', id, updates:{emails:updated}})
+    });
+    input.value='';
+    renderV();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+async function wizRemoveVendorEmail(id, email){
+  try{
+    const r = await authFetch(VCONFIG+'?company='+currentCompany);
+    const d = await r.json();
+    const vendor = (d.vendors||[]).find(v=>v.id===id);
+    if(!vendor) return;
+    const updated = vendor.emails.filter(e=>e!==email);
+    if(!updated.length){alert('Cannot remove last email');return;}
+    await authFetch(VCONFIG+'?company='+currentCompany, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'update', id, updates:{emails:updated}})
+    });
+    renderV();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+function b64f(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
+</script>
+</body>
+</html>
+
+
+<script>
+// Sidebar toggle
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sb-backdrop').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-backdrop').classList.remove('open');
+}
+function sbSwitchCompany(co){
+  // Update sidebar card active state
+  document.querySelectorAll('.sb-co-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('sb-co-'+co)?.classList.add('active');
+  switchCompany(co);
+  closeSidebar();
+}
+function updateSidebarPending(co, count){
+  const el = document.getElementById('sb-co-pending-'+co);
+  if(el) el.textContent = count > 0 ? count : '0';
+}
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
+</script>
+</body>
+</html>
