@@ -11,7 +11,8 @@ function getBlobStore() {
   const siteID = process.env.NETLIFY_SITE_ID;
   const token  = process.env.NETLIFY_AUTH_TOKEN;
   if (!siteID || !token) throw new Error("NETLIFY_SITE_ID or NETLIFY_AUTH_TOKEN not set");
-  return getStore({ name: "forest-bills", siteID, token });
+  // strong: savePending does read-modify-write; stale reads would drop status updates
+  return getStore({ name: "forest-bills", siteID, token, consistency: "strong" });
 }
 
 function blobKey(co) { const k = (co||"USA").toUpperCase(); return k === "USA" ? "pending-invoices" : `${k.toLowerCase()}-pending-invoices`; }

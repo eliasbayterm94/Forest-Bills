@@ -14,7 +14,8 @@ async function findOrCreateVendor(name, token, realmId, baseUrl) {
   const s = await (await fetch(`${base}/query?query=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })).json();
   if (s.QueryResponse?.Vendor?.length > 0) return s.QueryResponse.Vendor[0].Id;
   const c = await (await fetch(`${base}/vendor`, { method: "POST", headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ DisplayName: name }) })).json();
-  return c.Vendor?.Id;
+  if (!c.Vendor?.Id) throw new Error(`QB vendor create failed for "${name}": ${c.Fault?.Error?.[0]?.Message || JSON.stringify(c).slice(0, 200)}`);
+  return c.Vendor.Id;
 }
 
 async function getAccountRef(name, token, realmId, baseUrl) {
@@ -42,7 +43,7 @@ async function attachPDF(billId, pdfBase64, filename, token, realmId, baseUrl) {
 }
 
 async function checkDuplicate(invoiceNumber, vendorId, accessToken, realmId, baseUrl) {
-  if (!invoiceNumber) return false;
+  if (!invoiceNumber) return null;
   const base = `${baseUrl}/v3/company/${realmId}`;
   const query = `SELECT * FROM Bill WHERE DocNumber = '${invoiceNumber.replace(/'/g, "\\'")}'`;
   const res = await fetch(`${base}/query?query=${encodeURIComponent(query)}`, {
@@ -50,7 +51,7 @@ async function checkDuplicate(invoiceNumber, vendorId, accessToken, realmId, bas
   });
   const data = await res.json();
   const bills = data.QueryResponse?.Bill || [];
-  return bills.some(b => b.VendorRef?.value === vendorId);
+  return bills.find(b => b.VendorRef?.value === vendorId) || null;
 }
 
 async function createQBBill(extracted, pdfBase64, filename, token, qb, config, normalizedVendor) {
@@ -59,8 +60,10 @@ async function createQBBill(extracted, pdfBase64, filename, token, qb, config, n
 
   const vendorId = await findOrCreateVendor(normalizedVendor, token, realmId, baseUrl);
 
-  const isDuplicate = await checkDuplicate(extracted.invoice_number, vendorId, token, realmId, baseUrl);
-  if (isDuplicate) throw new Error(`Duplicate: Bill ${extracted.invoice_number} already exists in QB for this vendor`);
+  // If the bill already exists in QB (e.g. a previous push timed out after creating it),
+  // return it as success so the frontend can mark the invoice done instead of erroring forever
+  const existing = await checkDuplicate(extracted.invoice_number, vendorId, token, realmId, baseUrl);
+  if (existing) return { billId: existing.Id, alreadyExisted: true };
 
   const lines = [];
   // Cache tax code lookups
@@ -146,7 +149,7 @@ async function createQBBill(extracted, pdfBase64, filename, token, qb, config, n
 
   const billId = billData.Bill.Id;
   if (pdfBase64) { try { await attachPDF(billId, pdfBase64, filename, token, realmId, baseUrl); } catch (e) { console.warn("PDF attach failed:", e.message); } }
-  return billId;
+  return { billId, alreadyExisted: false };
 }
 
 // ─── HANDLER ──────────────────────────────────────────────────────────────────
@@ -256,7 +259,7 @@ Return ONLY valid JSON:
       }
     } catch(e) {}
 
-    const billId = await createQBBill(extracted, pdf_base64, filename, token, qb, config, normalizedVendor);
+    const { billId, alreadyExisted } = await createQBBill(extracted, pdf_base64, filename, token, qb, config, normalizedVendor);
     const qb_url = `https://app.qbo.intuit.com/app/bill?txnId=${billId}`;
 
     // Persist to blob log
@@ -264,7 +267,7 @@ Return ONLY valid JSON:
       const siteID = process.env.NETLIFY_SITE_ID;
       const blobToken = process.env.NETLIFY_AUTH_TOKEN;
       if (siteID && blobToken) {
-        const store = getStore({ name: "forest-bills", siteID, token: blobToken });
+        const store = getStore({ name: "forest-bills", siteID, token: blobToken, consistency: "strong" });
         const blobKey = (company || "USA").toUpperCase() === "USA" ? "bill-log" : `${(company || "usa").toLowerCase()}-bill-log`;
         let log = [];
         try { log = await store.get(blobKey, { type: "json" }) || []; } catch(e) {}
@@ -281,7 +284,7 @@ Return ONLY valid JSON:
       }
     } catch(e) { console.warn("Log persist failed:", e.message); }
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, bill_id: billId, extracted, normalized_vendor: normalizedVendor, filename, qb_url, company: company || "USA" }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, bill_id: billId, already_existed: alreadyExisted, extracted, normalized_vendor: normalizedVendor, filename, qb_url, company: company || "USA" }) };
   } catch (err) {
     console.error("process-bill error:", err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };

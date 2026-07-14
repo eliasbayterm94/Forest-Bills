@@ -1137,7 +1137,7 @@ async function doPush(inv){
     const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||''})});
     const data=await r.json();if(!r.ok) throw new Error(data.error||'QB push failed');
     inv.st='done';inv.bid=data.bill_id;inv.qurl=data.qb_url;
-    setSt(inv.id,'done','✓ In QB');
+    setSt(inv.id,'done',data.already_existed?'✓ Already in QB':'✓ In QB');
     document.getElementById(`r-${inv.id}`)?.classList.add('done');
     // Show normalized vendor name (what QB actually used)
     const qbVendor = data.normalized_vendor || d.vendor_name || '—';
@@ -1148,7 +1148,10 @@ async function doPush(inv){
     if(inv.src==='gmail') authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'confirmed',bill_id:data.bill_id,qb_url:data.qb_url,company:currentCompany})}).catch(()=>{});
     blog.unshift({at:new Date().toLocaleTimeString(),vendor:d.vendor_name,inv:d.invoice_number,idate:d.invoice_date,ddate:d.due_date,amt:d.total_amount||0,bid:data.bill_id,qurl:data.qb_url});
     updLogBadge();
-  }catch(e){inv.st='error';setSt(inv.id,'error',`✗ ${e.message.slice(0,28)}`);kset('err',++serr);}
+  }catch(e){
+    inv.st='error';setSt(inv.id,'error',`✗ ${e.message.slice(0,60)}`);kset('err',++serr);
+    const se=document.getElementById(`s-${inv.id}`);if(se)se.title=e.message; // full error on hover
+  }
 }
 
 async function removeSel(){
@@ -1159,11 +1162,7 @@ async function removeSel(){
     document.getElementById(`d-${inv.id}`)?.remove();
     invs=invs.filter(i=>i.id!==inv.id);
   });
-  for(const inv of sel){
-    if(inv.src==='gmail'){
-      try{ await authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'rejected',company:currentCompany})}); }catch(e){}
-    }
-  }
+  await rejectOnServer(sel);
   if(!invs.length) document.getElementById('itbody').innerHTML='<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
   document.getElementById('cball').checked=false;
   onCk();updTB();
@@ -1178,14 +1177,24 @@ async function clearAllInvoices(){
     document.getElementById(`d-${inv.id}`)?.remove();
   });
   invs = [];
-  for(const inv of toRemove){
-    if(inv.src==='gmail'){
-      try{ await authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_id:inv.id,status:'rejected',company:currentCompany})}); }catch(e){}
-    }
-  }
+  await rejectOnServer(toRemove);
   document.getElementById('itbody').innerHTML='<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
   document.getElementById('cball').checked=false;
   onCk();updTB();
+}
+
+// Mark removed gmail invoices as rejected on the server in ONE bulk request.
+// (One request per invoice caused a read-modify-write race in Netlify Blobs that
+// resurrected already-rejected invoices, so cleared ones reappeared the next day.)
+async function rejectOnServer(removed){
+  const ids = removed.filter(i=>i.src==='gmail').map(i=>i.id);
+  if(!ids.length) return;
+  try{
+    const r = await authFetch(STATUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice_ids:ids,status:'rejected',company:currentCompany})});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||`HTTP ${r.status}`); }
+  }catch(e){
+    alert(`Warning: could not save removal to server (${e.message}). These invoices may reappear on next load.`);
+  }
 }
 
 function updTB(){
