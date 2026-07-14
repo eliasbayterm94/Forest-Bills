@@ -382,6 +382,7 @@ select.form-input{cursor:pointer;appearance:none;-webkit-appearance:none;backgro
         <span class="fc-topbar-title" id="topbar-title">Invoices</span>
       </div>
       <div class="fc-topbar-right">
+        <button class="btn bb bsm" onclick="updateApp()" id="upd-btn" title="Reload to get the latest deployed version"><i data-lucide="rotate-cw"></i> Update</button>
         <div class="fc-topbar-dot" id="co-dot" style="background:var(--fc-yellow);box-shadow:0 0 6px var(--fc-yellow)"></div>
         <span class="fc-topbar-label" id="co-label">QB · Forest Coffee LLC</span>
       </div>
@@ -745,6 +746,15 @@ const API    = '/.netlify/functions/process-bill';
 const GMAIL  = '/.netlify/functions/scan-gmail';
 const STATUS = '/.netlify/functions/update-invoice-status';
 const FBILLS = '/.netlify/functions/fetch-bills';
+
+// ── App update: reload bypassing cached HTML so the latest deploy loads ──
+function updateApp() {
+  const b = document.getElementById('upd-btn');
+  if (b) { b.disabled = true; b.textContent = 'Updating…'; }
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+// Strip the cache-buster from the URL after the update reload
+if (location.search.includes('v=')) history.replaceState(null, '', location.pathname);
 
 // ── Auth ──
 let apiKey = localStorage.getItem('forest-api-key') || '';
