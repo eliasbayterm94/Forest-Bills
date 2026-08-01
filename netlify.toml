@@ -8,7 +8,13 @@
 [functions."process-bill"]
   timeout = 26
 
+# scan-gmail must stay HTTP-invocable (frontend button); a schedule here would
+# make Netlify reject direct requests with 403. The daily cron runs via
+# scheduled-scan below, which calls the same logic internally.
 [functions."scan-gmail"]
+  timeout = 26
+
+[functions."scheduled-scan"]
   schedule = "0 8 * * *"
   timeout = 26
 
