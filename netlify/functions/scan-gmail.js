@@ -117,35 +117,48 @@ async function scanCompany(co) {
   const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', ...dynamicInvoiceOnly];
 
   const query = buildQuery(allEmails, env.startDate, co);
-  const searchRes = await gmail.users.messages.list({ userId: "me", q: query, maxResults: 5 });
+  const searchRes = await gmail.users.messages.list({ userId: "me", q: query, maxResults: 20 });
   const messages = searchRes.data.messages || [];
-  if (!messages.length) return { company: co, invoices: [], saved: 0, skipped: 0, message: "No new emails" };
+  const remaining = Math.max(0, (searchRes.data.resultSizeEstimate || messages.length) - messages.length);
+  if (!messages.length) return { company: co, invoices: [], saved: 0, skipped: 0, remaining: 0, message: "No new emails" };
 
   const labelName = co === "USA" ? "forest-bills-done" : `forest-bills-${co.toLowerCase()}-done`;
   const labelId = await getOrCreateLabel(gmail, labelName);
-  const invoices = []; let skipped = 0;
 
-  for (const msg of messages) {
-    const pdfs = await getPDFAttachments(gmail, msg.id);
-    if (!pdfs.length) continue;
-    let any = false;
-    for (const pdf of pdfs) {
-      const fn = (pdf.filename || '').toLowerCase();
-      const subj = (pdf.subject || '').toLowerCase();
-      const from = (pdf.from || '').toLowerCase();
-      if (fn.includes('signature') || fn.includes('logo') || fn.includes('banner')) { skipped++; continue; }
-      if (subj.includes('customer statement') || subj.includes('statement of account') || fn.includes('statement')) { skipped++; continue; }
-      const skipPatterns = ['proof of release', 'proof of delivery', 'packing list', 'packing_list',
-        'pod tcku', 'pod_', 'delivery order', 'bill of lading'];
-      if (skipPatterns.some(p => fn.includes(p))) { skipped++; continue; }
-      if (invoiceOnlySenders.some(s => from.includes(s)) && !fn.includes('invoice')) { skipped++; continue; }
-      invoices.push(pdf); any = true;
+  // Process messages in parallel, and label EVERY successfully processed message —
+  // including ones where all PDFs were skipped or no PDF was found. Unlabeled
+  // skipped emails kept matching the query and clogged the maxResults window,
+  // permanently hiding older invoice emails behind them.
+  const results = await Promise.all(messages.map(async (msg) => {
+    try {
+      const pdfs = await getPDFAttachments(gmail, msg.id);
+      const accepted = []; let skippedCount = 0;
+      for (const pdf of pdfs) {
+        const fn = (pdf.filename || '').toLowerCase();
+        const subj = (pdf.subject || '').toLowerCase();
+        const from = (pdf.from || '').toLowerCase();
+        if (fn.includes('signature') || fn.includes('logo') || fn.includes('banner')) { skippedCount++; continue; }
+        if (subj.includes('customer statement') || subj.includes('statement of account') || fn.includes('statement')) { skippedCount++; continue; }
+        const skipPatterns = ['proof of release', 'proof of delivery', 'packing list', 'packing_list',
+          'pod tcku', 'pod_', 'delivery order', 'bill of lading'];
+        if (skipPatterns.some(p => fn.includes(p))) { skippedCount++; continue; }
+        if (invoiceOnlySenders.some(s => from.includes(s)) && !fn.includes('invoice')) { skippedCount++; continue; }
+        accepted.push(pdf);
+      }
+      try { await gmail.users.messages.modify({ userId: "me", id: msg.id, requestBody: { addLabelIds: [labelId] } }); } catch {}
+      return { accepted, skipped: skippedCount };
+    } catch (e) {
+      // Fetch failed — leave unlabeled so the next scan retries this message
+      console.warn(`[${co}] Message ${msg.id} failed, will retry next scan:`, e.message);
+      return { accepted: [], skipped: 0 };
     }
-    if (any) try { await gmail.users.messages.modify({ userId: "me", id: msg.id, requestBody: { addLabelIds: [labelId] } }); } catch {}
-  }
+  }));
+
+  const invoices = results.flatMap(r => r.accepted);
+  const skipped = results.reduce((s, r) => s + r.skipped, 0);
 
   const saveResult = await savePending(invoices, co);
-  return { company: co, invoices, saved: saveResult.count, savedItems: saveResult.items, skipped, count: invoices.length };
+  return { company: co, invoices, saved: saveResult.count, savedItems: saveResult.items, skipped, remaining, count: invoices.length };
 }
 
 exports.handler = async (event) => {
@@ -220,16 +233,16 @@ exports.handler = async (event) => {
       }
 
       const r = await scanCompany(co);
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, message: `[${r.company}] ${r.count||0} found, ${r.saved} new, ${r.skipped} skipped` }) };
+      const more = r.remaining > 0 ? `, ~${r.remaining} more emails pending — scan again` : "";
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: `[${r.company}] ${r.count||0} found, ${r.saved} new, ${r.skipped} skipped${more}` }) };
     }
-    // Scan all
-    const results = [];
-    for (const k of getAllCompanyKeys()) {
+    // Scan all companies in parallel (each has its own Gmail account and blob key)
+    const results = await Promise.all(getAllCompanyKeys().map(async (k) => {
       try {
         const r = await scanCompany(k);
-        results.push({ company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, message: r.message });
-      } catch (e) { results.push({ company: k, error: e.message }); }
-    }
+        return { company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: r.message };
+      } catch (e) { return { company: k, error: e.message }; }
+    }));
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, results, message: `Scanned ${results.length} companies` }) };
   } catch (err) { return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) }; }
 };

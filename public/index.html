@@ -1011,7 +1011,8 @@ async function scanGmail(rescan){
         n++;
       }
     });
-    btn.textContent=n>0?`${n} found`:(scan.saved>0?`${scan.saved} saved`:'No new');
+    const more=scan.remaining>0?' · more pending, scan again':'';
+    btn.textContent=(n>0?`${n} found`:(scan.saved>0?`${scan.saved} saved`:'No new'))+more;
   }catch(e){btn.textContent='Error';}
   setTimeout(()=>{
     document.getElementById('gbtn').innerHTML='<i data-lucide="mail"></i> Scan Gmail';document.getElementById('gbtn').disabled=false;
