@@ -321,24 +321,34 @@ exports.handler = async (event) => {
       // Rescan mode: remove the done label from recent emails first, then scan normally
       if (body.rescan) {
         try {
+          // Forced re-scan: unlabel done emails from the last N days (capped at the
+          // 10-day scan window — beyond that the scan query can't see them anyway)
+          const days = Math.min(10, Math.max(1, parseInt(body.days, 10) || 7));
           const config = getCompanyConfig(co);
           const env = getGmailEnvVars(config);
           const gmail = await getGmailClient(env);
-          const labelName = co === "USA" ? "forest-bills-done" : `forest-bills-${co.toLowerCase()}-done`;
-          const labelId = await getOrCreateLabel(gmail, labelName);
-          // Find recent labeled emails (last 7 days)
-          const d = new Date(); d.setDate(d.getDate() - 7);
+          const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
+          const d = new Date(); d.setDate(d.getDate() - days);
           const afterDate = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-          const q = `label:${labelName} after:${afterDate}`;
-          const res = await gmail.users.messages.list({ userId: "me", q, maxResults: 20 });
+          const q = `label:${doneLabelName(co)} after:${afterDate}`;
+          const res = await gmail.users.messages.list({ userId: "me", q, maxResults: 50 });
           const msgs = res.data.messages || [];
-          let unlabeled = 0;
-          for (const m of msgs) {
-            try { await gmail.users.messages.modify({ userId: "me", id: m.id, requestBody: { removeLabelIds: [labelId] } }); unlabeled++; } catch {}
-          }
+          const mods = await Promise.all(msgs.map(m =>
+            gmail.users.messages.modify({ userId: "me", id: m.id, requestBody: { removeLabelIds: [labelId] } }).then(() => 1).catch(() => 0)
+          ));
+          const unlabeled = mods.reduce((a, b) => a + b, 0);
+          // Drop non-pending blob entries (rejected/confirmed) so the dedup can't
+          // block re-found invoices. Pending ones stay, so the queue isn't duplicated.
+          let unblocked = 0;
+          try {
+            const all = await loadPending(co);
+            const kept = all.filter(i => i.status === "pending");
+            unblocked = all.length - kept.length;
+            if (unblocked > 0) await getBlobStore().setJSON(blobKey(co), kept);
+          } catch {}
           // Now do normal scan
           const r = await scanCompany(co);
-          return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, unlabeled, count: r.count || 0, saved: r.saved, skipped: r.skipped, message: `[${r.company}] Unlabeled ${unlabeled} emails, found ${r.count||0}, saved ${r.saved} new` }) };
+          return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, unlabeled, unblocked, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: `[${r.company}] Unlabeled ${unlabeled} emails (${days}d), unblocked ${unblocked}, found ${r.count||0}, saved ${r.saved} new` }) };
         } catch (e) {
           return { statusCode: 500, headers, body: JSON.stringify({ error: `Rescan failed: ${e.message}` }) };
         }

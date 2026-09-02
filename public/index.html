@@ -1008,10 +1008,22 @@ async function af(file){
 
 // ── Gmail ──
 async function scanGmail(rescan){
+  let days=7;
+  if(rescan){
+    const v=prompt('Force re-scan: how many days back? (1-10)\nThis unmarks already-processed emails in that range and clears removal blocks, then scans everything again.','8');
+    if(v===null) return;
+    days=Math.min(10,Math.max(1,parseInt(v)||7));
+  }
   const btn=document.getElementById(rescan?'rbtn':'gbtn');btn.textContent='Scanning...';btn.disabled=true;
   try{
-    const r=await authFetch(GMAIL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company:currentCompany,rescan:!!rescan})});
-    const scan=await r.json();
+    // Repeat passes until the mailbox backlog is drained (each pass covers up to 20 emails)
+    let scan={},passes=0,totalSaved=0;
+    do{
+      const r=await authFetch(GMAIL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company:currentCompany,rescan:!!rescan&&passes===0,days})});
+      scan=await r.json();
+      totalSaved+=scan.saved||0;passes++;
+      if(scan.remaining>0)btn.textContent=`Scanning… pass ${passes+1}`;
+    }while(scan.remaining>0&&passes<6);
 
     const r2=await authFetch(`${GMAIL}?company=${currentCompany}`,{method:'GET'});
     const d2=await r2.json();
@@ -1023,7 +1035,7 @@ async function scanGmail(rescan){
       }
     });
     const more=scan.remaining>0?' · more pending, scan again':'';
-    btn.textContent=(n>0?`${n} found`:(scan.saved>0?`${scan.saved} saved`:'No new'))+more;
+    btn.textContent=(n>0?`${n} found`:(totalSaved>0?`${totalSaved} saved`:'No new'))+more;
   }catch(e){btn.textContent='Error';}
   setTimeout(()=>{
     document.getElementById('gbtn').innerHTML='<i data-lucide="mail"></i> Scan Gmail';document.getElementById('gbtn').disabled=false;
