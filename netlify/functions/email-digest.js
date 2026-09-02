@@ -20,7 +20,13 @@ function blobKeyLog(co) { const k = (co||"USA").toUpperCase(); return k === "USA
 
 async function getGmailClient() {
   const oauth2 = new google.auth.OAuth2(process.env.GMAIL_CLIENT_ID, process.env.GMAIL_CLIENT_SECRET);
-  oauth2.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+  // Prefer a token saved via Settings → Reconnect Gmail (survives revoked env tokens)
+  let refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+  try {
+    const saved = await getBlobStore().get("gmail-refresh-token", { type: "json" });
+    if (saved?.refresh_token) refreshToken = saved.refresh_token;
+  } catch {}
+  oauth2.setCredentials({ refresh_token: refreshToken });
   return google.gmail({ version: "v1", auth: oauth2 });
 }
 

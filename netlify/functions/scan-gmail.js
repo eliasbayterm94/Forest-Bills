@@ -46,10 +46,29 @@ async function savePending(invoices, co) {
   } catch (e) { console.warn("Blob save failed:", e.message); return { count: 0, items: [] }; }
 }
 
-async function getGmailClient(env) {
+const { gmailTokenKey } = require("./gmail-auth");
+
+async function getStoredGmailToken(co) {
+  try {
+    const saved = await getBlobStore().get(gmailTokenKey(co), { type: "json" });
+    return saved?.refresh_token || null;
+  } catch { return null; }
+}
+
+async function getGmailClient(env, co) {
+  // A token saved via Settings → Reconnect Gmail wins over the env var:
+  // it's newer, and env vars only change with a redeploy.
+  const stored = await getStoredGmailToken(co);
   const oauth2 = new google.auth.OAuth2(env.clientId, env.clientSecret);
-  oauth2.setCredentials({ refresh_token: env.refreshToken });
+  oauth2.setCredentials({ refresh_token: stored || env.refreshToken });
   return google.gmail({ version: "v1", auth: oauth2 });
+}
+
+// Translate Google's opaque invalid_grant into an actionable message
+function friendlyGmailError(e, co) {
+  if ((e && e.message || "").includes("invalid_grant"))
+    return new Error(`Gmail authorization expired for ${co} (e.g. after a password change) — go to Settings → Reconnect Gmail, then scan again`);
+  return e || new Error("Unknown error");
 }
 
 function doneLabelName(companyKey) {
@@ -126,7 +145,7 @@ async function scanCompany(co) {
   const [dynamicResult, overrideResult, gmail] = await Promise.all([
     getVendorConfigs(co).catch(() => []),
     getSystemOverrides(co).catch(() => ({})),
-    getGmailClient(env),
+    getGmailClient(env, co),
   ]);
 
   const dynamicEmails = (dynamicResult || []).filter(v => v.active).flatMap(v => v.emails || []);
@@ -186,7 +205,7 @@ async function diagnoseSearch(co, qraw) {
   const [dynamicResult, overrideResult, gmail] = await Promise.all([
     getVendorConfigs(co).catch(() => []),
     getSystemOverrides(co).catch(() => ({})),
-    getGmailClient(env),
+    getGmailClient(env, co),
   ]);
   const dynamicEmails = (dynamicResult || []).filter(v => v.active).flatMap(v => v.emails || []);
   const dynamicInvoiceOnly = (dynamicResult || []).filter(v => v.active && v.options?.invoice_only_filename).flatMap(v => v.emails || []);
@@ -239,7 +258,7 @@ async function recoverMessage(co, msgId) {
   const config = getCompanyConfig(co);
   const env = getGmailEnvVars(config);
   if (!env.clientId || !env.refreshToken) throw new Error("Gmail not configured for " + co);
-  const gmail = await getGmailClient(env);
+  const gmail = await getGmailClient(env, co);
   const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
   try { await gmail.users.messages.modify({ userId: "me", id: msgId, requestBody: { removeLabelIds: [labelId] } }); } catch {}
 
@@ -282,7 +301,7 @@ exports.handler = async (event) => {
         if (!q) return { statusCode: 400, headers, body: JSON.stringify({ error: "q parameter required" }) };
         const d = await diagnoseSearch(co, q);
         return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...d }) };
-      } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
+      } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: friendlyGmailError(e, co).message }) }; }
     }
 
     // Troubleshooter: un-mark one email so the next scan re-processes it
@@ -326,7 +345,7 @@ exports.handler = async (event) => {
           const days = Math.min(10, Math.max(1, parseInt(body.days, 10) || 7));
           const config = getCompanyConfig(co);
           const env = getGmailEnvVars(config);
-          const gmail = await getGmailClient(env);
+          const gmail = await getGmailClient(env, co);
           const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
           const d = new Date(); d.setDate(d.getDate() - days);
           const afterDate = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
@@ -350,11 +369,11 @@ exports.handler = async (event) => {
           const r = await scanCompany(co);
           return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, unlabeled, unblocked, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: `[${r.company}] Unlabeled ${unlabeled} emails (${days}d), unblocked ${unblocked}, found ${r.count||0}, saved ${r.saved} new` }) };
         } catch (e) {
-          return { statusCode: 500, headers, body: JSON.stringify({ error: `Rescan failed: ${e.message}` }) };
+          return { statusCode: 500, headers, body: JSON.stringify({ error: `Rescan failed: ${friendlyGmailError(e, co).message}` }) };
         }
       }
 
-      const r = await scanCompany(co);
+      const r = await scanCompany(co).catch(e => { throw friendlyGmailError(e, co); });
       const more = r.remaining > 0 ? `, ~${r.remaining} more emails pending — scan again` : "";
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: `[${r.company}] ${r.count||0} found, ${r.saved} new, ${r.skipped} skipped${more}` }) };
     }
@@ -363,7 +382,7 @@ exports.handler = async (event) => {
       try {
         const r = await scanCompany(k);
         return { company: r.company, count: r.count || 0, saved: r.saved, skipped: r.skipped, remaining: r.remaining || 0, message: r.message };
-      } catch (e) { return { company: k, error: e.message }; }
+      } catch (e) { return { company: k, error: friendlyGmailError(e, k).message }; }
     }));
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, results, message: `Scanned ${results.length} companies` }) };
   } catch (err) { return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) }; }

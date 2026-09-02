@@ -617,6 +617,13 @@ select.form-input{cursor:pointer;appearance:none;-webkit-appearance:none;backgro
               <div class="pb"><div id="settings-company-info"></div></div>
             </div>
             <div class="panel">
+              <div class="ph"><div class="pd" style="background:var(--fc-danger)"></div><span class="pt">Gmail Connection</span></div>
+              <div class="pb">
+                <div style="font-size:11px;color:var(--fc-ink-500);margin-bottom:8px">If scans fail with "authorization expired" or invalid_grant (e.g. after changing the mailbox password), reconnect here. Sign in with the <b>billing mailbox of the current company</b>.</div>
+                <button class="btn bn" onclick="reconnectGmail()"><i data-lucide="mail"></i> Reconnect Gmail</button>
+              </div>
+            </div>
+            <div class="panel">
               <div class="ph"><div class="pd" style="background:var(--fc-blue)"></div><span class="pt">Scan Troubleshooter</span></div>
               <div class="pb">
                 <div style="font-size:11px;color:var(--fc-ink-500);margin-bottom:8px">Missing an invoice? Search the mailbox by sender or keyword (e.g. "dupuy" or "60149") to see why the scan did or didn't pick it up.</div>
@@ -1021,6 +1028,7 @@ async function scanGmail(rescan){
     do{
       const r=await authFetch(GMAIL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company:currentCompany,rescan:!!rescan&&passes===0,days})});
       scan=await r.json();
+      if(!r.ok) throw new Error(scan.error||'Scan failed');
       totalSaved+=scan.saved||0;passes++;
       if(scan.remaining>0)btn.textContent=`Scanning… pass ${passes+1}`;
     }while(scan.remaining>0&&passes<6);
@@ -1036,12 +1044,21 @@ async function scanGmail(rescan){
     });
     const more=scan.remaining>0?' · more pending, scan again':'';
     btn.textContent=(n>0?`${n} found`:(totalSaved>0?`${totalSaved} saved`:'No new'))+more;
-  }catch(e){btn.textContent='Error';}
+  }catch(e){
+    btn.textContent='Error';
+    if(/invalid_grant|authorization expired/i.test(e.message)) alert('Gmail authorization expired for this company (this happens after changing the mailbox password).\n\nGo to Settings → Reconnect Gmail, sign in with the billing mailbox, then scan again.');
+    else alert('Scan failed: '+e.message);
+  }
   setTimeout(()=>{
     document.getElementById('gbtn').innerHTML='<i data-lucide="mail"></i> Scan Gmail';document.getElementById('gbtn').disabled=false;
     document.getElementById('rbtn').innerHTML='<i data-lucide="refresh-cw"></i> Rescan';document.getElementById('rbtn').disabled=false;
     if(window.lucide)lucide.createIcons();
   },3000);
+}
+
+// ── Gmail reconnect (Settings) ──
+function reconnectGmail(){
+  window.open(`/.netlify/functions/gmail-auth?company=${currentCompany}&key=${encodeURIComponent(apiKey)}`,'_blank');
 }
 
 // ── Scan Troubleshooter (Settings) ──
