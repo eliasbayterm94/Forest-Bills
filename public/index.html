@@ -617,6 +617,17 @@ select.form-input{cursor:pointer;appearance:none;-webkit-appearance:none;backgro
               <div class="pb"><div id="settings-company-info"></div></div>
             </div>
             <div class="panel">
+              <div class="ph"><div class="pd" style="background:var(--fc-blue)"></div><span class="pt">Scan Troubleshooter</span></div>
+              <div class="pb">
+                <div style="font-size:11px;color:var(--fc-ink-500);margin-bottom:8px">Missing an invoice? Search the mailbox by sender or keyword (e.g. "dupuy" or "60149") to see why the scan did or didn't pick it up.</div>
+                <div style="display:flex;gap:8px;margin-bottom:10px">
+                  <input class="form-input" id="diag-q" placeholder='e.g. dupuy, 60149, vendor@mail.com' style="flex:1" onkeydown="if(event.key==='Enter')diagSearch()">
+                  <button class="btn bb" id="diag-btn" onclick="diagSearch()"><i data-lucide="search"></i> Search</button>
+                </div>
+                <div id="diag-results"></div>
+              </div>
+            </div>
+            <div class="panel">
               <div class="ph"><div class="pd"></div><span class="pt">Anti-Duplicate Protection</span></div>
               <div class="pb">
                 <div style="padding:10px 14px;background:rgba(77,124,47,.06);border:1px solid rgba(77,124,47,.15);border-radius:6px;margin-bottom:14px">
@@ -1019,6 +1030,52 @@ async function scanGmail(rescan){
     document.getElementById('rbtn').innerHTML='<i data-lucide="refresh-cw"></i> Rescan';document.getElementById('rbtn').disabled=false;
     if(window.lucide)lucide.createIcons();
   },3000);
+}
+
+// ── Scan Troubleshooter (Settings) ──
+const DIAG_VERDICTS={
+  in_queue:['✓ Already in the invoice queue (pending)','var(--fc-success)'],
+  will_pick_next_scan:['✓ Not processed yet — the next scan will pick it up. Hit Scan Gmail.','var(--fc-success)'],
+  sender_not_in_list:['✗ Sender is NOT in the vendor list for this company — add this email in Vendor Configuration, then scan again','var(--fc-danger)'],
+  already_processed:['⚠ Already marked as processed (done label). Use Recover to make the scan take it again.','#b8860b'],
+  blocked_recently_cleared:['⚠ It was cleared/removed recently, so the scan is blocking it as a duplicate. Use Recover.','#b8860b'],
+  all_pdfs_skipped:['✗ All its PDFs were skipped by the filters (see reasons above)','var(--fc-danger)'],
+  no_pdf:['✗ No PDF attachment found in this email','var(--fc-danger)'],
+  outside_window:['✗ Older than the 10-day scan window','var(--fc-danger)'],
+};
+async function diagSearch(){
+  const q=document.getElementById('diag-q').value.trim(); if(!q) return;
+  const btn=document.getElementById('diag-btn'), out=document.getElementById('diag-results');
+  btn.disabled=true; out.innerHTML='<div style="font-size:11px;color:var(--fc-ink-500)">Searching mailbox…</div>';
+  try{
+    const r=await authFetch(`${GMAIL}?action=diagnose&company=${currentCompany}&q=${encodeURIComponent(q)}`);
+    const d=await r.json(); if(!r.ok) throw new Error(d.error||'Search failed');
+    if(!(d.results||[]).length){ out.innerHTML='<div style="font-size:11px;color:var(--fc-ink-500)">No emails matched in the last 30 days of this company\'s mailbox. If the invoice exists, it may be in a different company\'s inbox or older than 30 days.</div>'; return; }
+    out.innerHTML=d.results.map(m=>{
+      const [vtext,vcolor]=DIAG_VERDICTS[m.verdict]||[m.verdict,'var(--fc-ink)'];
+      const pdfs=(m.pdfs||[]).map(p=>`<div style="font-size:10px;color:${p.skip?'var(--fc-danger)':'var(--fc-ink-500)'}">📄 ${p.filename}${p.skip?` — skipped: ${p.skip}`:''}</div>`).join('')||'<div style="font-size:10px;color:var(--fc-ink-500)">No PDF attachments</div>';
+      const blob=(m.blob||[]).map(b=>`<div style="font-size:10px;color:var(--fc-ink-500)">Server status: ${b.status}${b.at?` · ${String(b.at).slice(0,10)}`:''}</div>`).join('');
+      const canRecover=m.verdict==='already_processed'||m.verdict==='blocked_recently_cleared';
+      return `<div style="border:1px solid var(--fc-ink-100);border-radius:6px;padding:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:var(--fc-navy)">${m.subject||'(no subject)'}</div>
+        <div style="font-size:10px;color:var(--fc-ink-500);margin-bottom:4px">${m.from} · ${m.date}</div>
+        ${pdfs}${blob}
+        <div style="font-size:11px;font-weight:600;color:${vcolor};margin-top:6px">${vtext}</div>
+        ${canRecover?`<button class="btn by bsm" style="margin-top:6px" onclick="diagRecover('${m.id}',this)"><i data-lucide="rotate-ccw"></i> Recover & re-scan</button>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){ out.innerHTML=`<div style="font-size:11px;color:var(--fc-danger)">Error: ${e.message}</div>`; }
+  finally{ btn.disabled=false; if(window.lucide)lucide.createIcons(); }
+}
+async function diagRecover(id,btn){
+  btn.disabled=true; btn.textContent='Recovering…';
+  try{
+    const r=await authFetch(`${GMAIL}?action=recover&company=${currentCompany}&id=${encodeURIComponent(id)}`);
+    const d=await r.json(); if(!r.ok) throw new Error(d.error||'Recover failed');
+    btn.textContent='✓ Recovered — scanning…';
+    await scanGmail();
+    btn.textContent='✓ Done — check the Invoices tab';
+  }catch(e){ btn.textContent='Error'; alert('Recover failed: '+e.message); btn.disabled=false; }
 }
 
 // ── Add invoice row ──

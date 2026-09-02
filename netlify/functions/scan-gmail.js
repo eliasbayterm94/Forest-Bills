@@ -52,16 +52,38 @@ async function getGmailClient(env) {
   return google.gmail({ version: "v1", auth: oauth2 });
 }
 
-function buildQuery(emails, startDate, companyKey) {
-  const labelName = (!companyKey || companyKey === "USA") ? "forest-bills-done" : `forest-bills-${companyKey.toLowerCase()}-done`;
-  // Cap the scan window to the last 10 days: with only startDate the window grew forever
-  // and high-volume companies hit too many matches, so new invoices stopped coming in.
-  // startDate still wins if it's more recent than 10 days ago (e.g. a newly onboarded company).
+function doneLabelName(companyKey) {
+  return (!companyKey || companyKey === "USA") ? "forest-bills-done" : `forest-bills-${companyKey.toLowerCase()}-done`;
+}
+
+// Cap the scan window to the last 10 days: with only startDate the window grew forever
+// and high-volume companies hit too many matches, so new invoices stopped coming in.
+// startDate still wins if it's more recent than 10 days ago (e.g. a newly onboarded company).
+function scanAfterDate(startDate) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 10);
   const startTs = Date.parse((startDate || "2026/04/07").replace(/\//g, "-"));
-  const after = (startTs && startTs > cutoff.getTime()) ? new Date(startTs) : cutoff;
+  return (startTs && startTs > cutoff.getTime()) ? new Date(startTs) : cutoff;
+}
+
+function buildQuery(emails, startDate, companyKey) {
+  const after = scanAfterDate(startDate);
   const afterStr = `${after.getFullYear()}/${String(after.getMonth() + 1).padStart(2, "0")}/${String(after.getDate()).padStart(2, "0")}`;
-  return [`from:(${emails.join(" OR ")})`, "has:attachment", "filename:pdf", `-label:${labelName}`, `after:${afterStr}`].join(" ");
+  return [`from:(${emails.join(" OR ")})`, "has:attachment", "filename:pdf", `-label:${doneLabelName(companyKey)}`, `after:${afterStr}`].join(" ");
+}
+
+const SKIP_PATTERNS = ['proof of release', 'proof of delivery', 'packing list', 'packing_list',
+  'pod tcku', 'pod_', 'delivery order', 'bill of lading'];
+
+// Returns null if the PDF should be processed, or a human-readable skip reason
+function pdfSkipReason(pdf, invoiceOnlySenders) {
+  const fn = (pdf.filename || '').toLowerCase();
+  const subj = (pdf.subject || '').toLowerCase();
+  const from = (pdf.from || '').toLowerCase();
+  if (fn.includes('signature') || fn.includes('logo') || fn.includes('banner')) return 'filename looks like signature/logo/banner';
+  if (subj.includes('customer statement') || subj.includes('statement of account') || fn.includes('statement')) return 'statement, not an invoice';
+  if (SKIP_PATTERNS.some(p => fn.includes(p))) return 'delivery/packing document';
+  if (invoiceOnlySenders.some(s => from.includes(s)) && !fn.includes('invoice')) return 'sender requires "invoice" in the filename';
+  return null;
 }
 
 async function getPDFAttachments(gmail, messageId) {
@@ -134,15 +156,7 @@ async function scanCompany(co) {
       const pdfs = await getPDFAttachments(gmail, msg.id);
       const accepted = []; let skippedCount = 0;
       for (const pdf of pdfs) {
-        const fn = (pdf.filename || '').toLowerCase();
-        const subj = (pdf.subject || '').toLowerCase();
-        const from = (pdf.from || '').toLowerCase();
-        if (fn.includes('signature') || fn.includes('logo') || fn.includes('banner')) { skippedCount++; continue; }
-        if (subj.includes('customer statement') || subj.includes('statement of account') || fn.includes('statement')) { skippedCount++; continue; }
-        const skipPatterns = ['proof of release', 'proof of delivery', 'packing list', 'packing_list',
-          'pod tcku', 'pod_', 'delivery order', 'bill of lading'];
-        if (skipPatterns.some(p => fn.includes(p))) { skippedCount++; continue; }
-        if (invoiceOnlySenders.some(s => from.includes(s)) && !fn.includes('invoice')) { skippedCount++; continue; }
+        if (pdfSkipReason(pdf, invoiceOnlySenders)) { skippedCount++; continue; }
         accepted.push(pdf);
       }
       try { await gmail.users.messages.modify({ userId: "me", id: msg.id, requestBody: { addLabelIds: [labelId] } }); } catch {}
@@ -159,6 +173,84 @@ async function scanCompany(co) {
 
   const saveResult = await savePending(invoices, co);
   return { company: co, invoices, saved: saveResult.count, savedItems: saveResult.items, skipped, remaining, count: invoices.length };
+}
+
+// ─── SCAN TROUBLESHOOTER ──────────────────────────────────────────────────────
+// Searches the mailbox WITHOUT the scan's filters and explains, per email,
+// whether the scan can pick it up and if not, exactly why.
+async function diagnoseSearch(co, qraw) {
+  const config = getCompanyConfig(co);
+  const env = getGmailEnvVars(config);
+  if (!env.clientId || !env.refreshToken) throw new Error("Gmail not configured for " + co);
+
+  const [dynamicResult, overrideResult, gmail] = await Promise.all([
+    getVendorConfigs(co).catch(() => []),
+    getSystemOverrides(co).catch(() => ({})),
+    getGmailClient(env),
+  ]);
+  const dynamicEmails = (dynamicResult || []).filter(v => v.active).flatMap(v => v.emails || []);
+  const dynamicInvoiceOnly = (dynamicResult || []).filter(v => v.active && v.options?.invoice_only_filename).flatMap(v => v.emails || []);
+  const systemOverrideEmails = Object.values(overrideResult || {}).flat();
+  const allEmails = [...config.vendorEmails, ...dynamicEmails, ...systemOverrideEmails];
+  const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', ...dynamicInvoiceOnly];
+
+  const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
+  const after = scanAfterDate(env.startDate);
+
+  const res = await gmail.users.messages.list({ userId: "me", q: `${qraw} newer_than:30d`, maxResults: 10 });
+  const msgs = res.data.messages || [];
+  const blobAll = await loadPending(co);
+
+  const results = [];
+  for (const m of msgs) {
+    const msg = await gmail.users.messages.get({ userId: "me", id: m.id, format: "full" });
+    const hdrs = msg.data.payload?.headers || [];
+    const subject = hdrs.find(h => h.name === "Subject")?.value || "";
+    const from = hdrs.find(h => h.name === "From")?.value || "";
+    const date = hdrs.find(h => h.name === "Date")?.value || "";
+    const labeledDone = (msg.data.labelIds || []).includes(labelId);
+    const names = [];
+    (function find(parts) { for (const p of parts || []) { if ((p.mimeType === "application/pdf" || p.filename?.toLowerCase().endsWith(".pdf")) && p.body?.attachmentId) names.push(p.filename); if (p.parts) find(p.parts); } })(msg.data.payload?.parts);
+
+    const senderMatches = allEmails.some(e => from.toLowerCase().includes(e.toLowerCase()));
+    const ts = Date.parse(date);
+    const inWindow = !ts || ts >= after.getTime() - 24 * 3600 * 1000; // 1-day tz margin
+    const pdfs = names.map(filename => ({ filename, skip: pdfSkipReason({ filename, subject, from }, invoiceOnlySenders) }));
+    const blob = blobAll.filter(b => names.includes(b.filename)).map(b => ({ filename: b.filename, status: b.status, at: b.updated_at || b.scanned_at }));
+
+    let verdict;
+    if (!senderMatches) verdict = "sender_not_in_list";
+    else if (blob.some(b => b.status === "pending")) verdict = "in_queue";
+    else if (labeledDone) verdict = "already_processed";
+    else if (!pdfs.length) verdict = "no_pdf";
+    else if (pdfs.every(p => p.skip)) verdict = "all_pdfs_skipped";
+    else if (!inWindow) verdict = "outside_window";
+    else if (blob.length) verdict = "blocked_recently_cleared";
+    else verdict = "will_pick_next_scan";
+
+    results.push({ id: m.id, subject, from, date, labeledDone, pdfs, blob, verdict });
+  }
+  return { query: `${qraw} newer_than:30d`, vendor_list_size: allEmails.length, results };
+}
+
+// Un-marks one email so the next scan re-processes it: removes the done label
+// and drops any matching non-pending blob entries that would block the dedup.
+async function recoverMessage(co, msgId) {
+  const config = getCompanyConfig(co);
+  const env = getGmailEnvVars(config);
+  if (!env.clientId || !env.refreshToken) throw new Error("Gmail not configured for " + co);
+  const gmail = await getGmailClient(env);
+  const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
+  try { await gmail.users.messages.modify({ userId: "me", id: msgId, requestBody: { removeLabelIds: [labelId] } }); } catch {}
+
+  const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
+  const names = [];
+  (function find(parts) { for (const p of parts || []) { if (p.filename?.toLowerCase().endsWith(".pdf")) names.push(p.filename); if (p.parts) find(p.parts); } })(msg.data.payload?.parts);
+
+  const all = await loadPending(co);
+  const kept = all.filter(b => !(names.includes(b.filename) && b.status !== "pending"));
+  if (kept.length !== all.length) await getBlobStore().setJSON(blobKey(co), kept);
+  return { unlabeled: true, blob_cleared: all.length - kept.length };
 }
 
 exports.handler = async (event) => {
@@ -183,8 +275,28 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, removed: all.length - pending.length, remaining: pending.length }) };
     }
 
+    // Troubleshooter: explain why emails were / weren't picked up
+    if (action === "diagnose") {
+      try {
+        const q = ((event.queryStringParameters || {}).q || "").trim();
+        if (!q) return { statusCode: 400, headers, body: JSON.stringify({ error: "q parameter required" }) };
+        const d = await diagnoseSearch(co, q);
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...d }) };
+      } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
+    }
+
+    // Troubleshooter: un-mark one email so the next scan re-processes it
+    if (action === "recover") {
+      try {
+        const msgId = (event.queryStringParameters || {}).id;
+        if (!msgId) return { statusCode: 400, headers, body: JSON.stringify({ error: "id parameter required" }) };
+        const d = await recoverMessage(co, msgId);
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...d, message: "Recovered — run Scan Gmail now" }) };
+      } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
+    }
+
     const all = await loadPending(co);
-    
+
     // If specific invoice ID requested, return with base64
     if (invoiceId) {
       const inv = all.find(i => i.id === invoiceId);
