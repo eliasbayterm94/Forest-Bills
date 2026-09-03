@@ -294,6 +294,15 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, removed: all.length - pending.length, remaining: pending.length }) };
     }
 
+    // Automation heartbeats: last daily scan + digest runs (written by
+    // scheduled-scan and email-digest) for the Settings status panel
+    if (action === "status") {
+      try {
+        const st = (await getBlobStore().get("automation-status", { type: "json" })) || {};
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...st, schedule: { scan: "08:00 UTC daily", digest: "08:30 UTC daily" } }) };
+      } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
+    }
+
     // Troubleshooter: explain why emails were / weren't picked up
     if (action === "diagnose") {
       try {

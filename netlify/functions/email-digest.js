@@ -16,6 +16,16 @@ function getBlobStore() {
 }
 
 function blobKeyPending(co) { const k = (co||"USA").toUpperCase(); return k === "USA" ? "pending-invoices" : `${k.toLowerCase()}-pending-invoices`; }
+
+// Heartbeat so the Settings → Automation Status panel shows whether the daily
+// digest actually ran, was skipped (nothing to report) or failed to send.
+async function writeHeartbeat(entry) {
+  try {
+    const store = getBlobStore();
+    const cur = (await store.get("automation-status", { type: "json" }).catch(() => null)) || {};
+    await store.setJSON("automation-status", { ...cur, digest: entry });
+  } catch (e) { console.warn("Heartbeat write failed:", e.message); }
+}
 function blobKeyLog(co) { const k = (co||"USA").toUpperCase(); return k === "USA" ? "bill-log" : `${k.toLowerCase()}-bill-log`; }
 
 async function getGmailClient() {
@@ -251,6 +261,7 @@ exports.handler = async (event) => {
     const totalOverdue = summaries.reduce((s, c) => s + c.overdue.length, 0);
 
     if (totalPending === 0 && totalNew === 0 && totalOverdue === 0) {
+      await writeHeartbeat({ ran_at: new Date().toISOString(), ok: true, sent: 0, message: "Nothing to report — no email sent" });
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: "Nothing to report — no email sent" }) };
     }
 
@@ -260,25 +271,40 @@ exports.handler = async (event) => {
     const subject = `Resumen diario (${dateFormatted}) Forest Bills - ${details}`;
     const htmlBody = buildEmailHTML(summaries);
 
+    let sent = 0, failed = 0, firstError = null;
     for (const recipient of RECIPIENTS) {
       try {
         await sendEmail(gmail, recipient, subject, htmlBody);
+        sent++;
         console.log(`📧 Digest sent to ${recipient}`);
       } catch (e) {
+        failed++;
+        if (!firstError) firstError = e.message;
         console.error(`Failed to send to ${recipient}:`, e.message);
       }
     }
 
+    const friendly = firstError && firstError.includes("invalid_grant")
+      ? "Gmail authorization expired — go to Settings → Reconnect Gmail" : firstError;
+    await writeHeartbeat({ ran_at: new Date().toISOString(), ok: sent > 0, sent, failed, error: failed > 0 ? friendly : null, summary: { totalNew, totalPending, totalOverdue } });
+
+    // Every send failed: surface a real error instead of pretending success
+    if (sent === 0) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: `Digest send failed: ${friendly}` }) };
+    }
     return {
       statusCode: 200, headers,
       body: JSON.stringify({
         success: true,
-        message: `Digest sent to ${RECIPIENTS.length} recipients`,
+        message: `Digest sent to ${sent}/${RECIPIENTS.length} recipients`,
         summary: { totalNew, totalPending, totalOverdue },
       }),
     };
   } catch (err) {
     console.error("email-digest error:", err);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
+    const friendly = (err.message || "").includes("invalid_grant")
+      ? "Gmail authorization expired — go to Settings → Reconnect Gmail" : err.message;
+    await writeHeartbeat({ ran_at: new Date().toISOString(), ok: false, error: friendly });
+    return { statusCode: 500, headers, body: JSON.stringify({ error: friendly }) };
   }
 };
