@@ -1077,6 +1077,10 @@ async function loadAutoStatus(){
       const info=d.digest.error?`<span style="color:var(--fc-danger)">${d.digest.error.slice(0,120)}</span>`:(d.digest.message||`sent to ${d.digest.sent??'?'} recipient(s)`);
       h+=`<div style="margin-bottom:8px"><b style="color:${d.digest.ok?'var(--fc-success)':'var(--fc-danger)'}">${d.digest.ok?'✓':'✗'} Email digest</b> · last run: ${fmt(d.digest.ran_at)} · ${info}</div>`;
     } else h+='<div style="margin-bottom:8px"><b>Email digest</b> · no runs recorded yet (history starts with this version)</div>';
+    const conns=Object.entries(d.connections||{});
+    if(conns.length){
+      h+=`<div style="margin-bottom:8px"><b>Reconnected mailboxes</b>${conns.map(([co,c])=>`<div style="font-size:10px;color:var(--fc-ink-500);margin-left:8px">${co}: ${c.email||'(email unknown)'} · ${c.connected_at?new Date(c.connected_at).toLocaleString():''}</div>`).join('')}</div>`;
+    }
     h+=`<div style="font-size:10px;color:var(--fc-ink-500)">Schedules: scan ${d.schedule?.scan||'08:00 UTC daily'} · digest ${d.schedule?.digest||'08:30 UTC daily'}</div>`;
     el.innerHTML=h;
   }catch(e){ el.innerHTML=`<span style="color:var(--fc-danger)">Error: ${e.message}</span>`; }

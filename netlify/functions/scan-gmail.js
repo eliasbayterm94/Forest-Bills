@@ -304,7 +304,15 @@ exports.handler = async (event) => {
     if (action === "status") {
       try {
         const st = (await getBlobStore().get("automation-status", { type: "json" })) || {};
-        return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...st, schedule: { scan: "08:00 UTC daily", digest: "08:30 UTC daily" } }) };
+        // Which mailbox each company's reconnected token belongs to (if reconnected)
+        const connections = {};
+        for (const k of getAllCompanyKeys()) {
+          try {
+            const s = await getBlobStore().get(gmailTokenKey(k), { type: "json" });
+            if (s) connections[k] = { email: s.email || null, connected_at: s.connected_at || null };
+          } catch {}
+        }
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, ...st, connections, schedule: { scan: "08:00 UTC daily", digest: "08:30 UTC daily" } }) };
       } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
     }
 

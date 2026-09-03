@@ -59,8 +59,15 @@ exports.handler = async (event) => {
         const detail = tok.error_description || tok.error || "no refresh_token returned";
         return html(400, "Reconnection failed", `Google did not return a new token (${detail}). Open <b>myaccount.google.com/permissions</b> with the ${co} billing mailbox, remove this app's access, and try Reconnect Gmail again.`, false);
       }
-      await getBlobStore().setJSON(gmailTokenKey(co), { refresh_token: tok.refresh_token, connected_at: new Date().toISOString() });
-      return html(200, `Gmail reconnected for ${co} ✓`, "The scan will use the new authorization immediately. You can close this tab and run Scan Gmail again.", true);
+      // Look up which mailbox was actually connected so the user can verify
+      // they signed in with the billing account, not a personal one
+      let email = null;
+      try {
+        const prof = await (await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", { headers: { Authorization: `Bearer ${tok.access_token}` } })).json();
+        email = prof.emailAddress || null;
+      } catch {}
+      await getBlobStore().setJSON(gmailTokenKey(co), { refresh_token: tok.refresh_token, connected_at: new Date().toISOString(), email });
+      return html(200, `Gmail reconnected for ${co} ✓`, `Connected mailbox: <b>${email || "unknown"}</b>.<br><br>If that is NOT the billing mailbox, run Reconnect Gmail again and pick the right account. Otherwise close this tab and run Scan Gmail.`, true);
     }
 
     // ── Init leg (from Settings button) ──
