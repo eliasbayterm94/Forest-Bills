@@ -58,7 +58,12 @@ async function getStoredGmailToken(co) {
 async function getGmailClient(env, co) {
   // A token saved via Settings → Reconnect Gmail wins over the env var:
   // it's newer, and env vars only change with a redeploy.
-  const stored = await getStoredGmailToken(co);
+  let stored = await getStoredGmailToken(co);
+  // Companies without their own prefixed token share the global GMAIL_REFRESH_TOKEN
+  // (same mailbox) — so they also share the reconnected token stored under the USA key.
+  if (!stored && (!env.refreshToken || env.refreshToken === process.env.GMAIL_REFRESH_TOKEN)) {
+    stored = await getStoredGmailToken("USA");
+  }
   const oauth2 = new google.auth.OAuth2(env.clientId, env.clientSecret);
   oauth2.setCredentials({ refresh_token: stored || env.refreshToken });
   return google.gmail({ version: "v1", auth: oauth2 });
