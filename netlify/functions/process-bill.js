@@ -152,6 +152,35 @@ async function createQBBill(extracted, pdfBase64, filename, token, qb, config, n
   return { billId, alreadyExisted: false };
 }
 
+// The app can push a user-reviewed extraction (e.g. corrected QB accounts)
+// instead of re-extracting: what the user approved is exactly what gets pushed
+function isValidOverride(o) {
+  return !!(o && typeof o === "object" && o.vendor_name && Array.isArray(o.line_items) &&
+    o.line_items.some(l => l && l.account && Number(l.amount) > 0));
+}
+function sanitizeOverride(o) {
+  const num = v => (Number.isFinite(Number(v)) ? Number(v) : null);
+  const str = (v, max) => (v == null || v === "" ? null : String(v).slice(0, max));
+  return {
+    vendor_name: str(o.vendor_name, 200),
+    invoice_number: str(o.invoice_number, 60),
+    invoice_date: str(o.invoice_date, 20),
+    due_date: str(o.due_date, 20),
+    payment_terms: str(o.payment_terms, 60),
+    total_amount: num(o.total_amount) || 0,
+    currency: str(o.currency, 6),
+    exchange_rate: num(o.exchange_rate),
+    notes: str(o.notes, 500) || "",
+    line_items: (o.line_items || []).slice(0, 50).map(l => ({
+      account: str(l?.account, 200),
+      description: str(l?.description, 300) || "",
+      amount: num(l?.amount) || 0,
+      confidence: str(l?.confidence, 10) || "high",
+      ...(l?.tax_code ? { tax_code: str(l.tax_code, 30) } : {}),
+    })).filter(l => l.account && l.amount > 0),
+  };
+}
+
 // ─── HANDLER ──────────────────────────────────────────────────────────────────
 exports.handler = async (event) => {
   const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-API-Key", "Access-Control-Allow-Methods": "POST, OPTIONS", "Content-Type": "application/json" };
@@ -164,7 +193,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method not allowed" };
 
   try {
-    const { pdf_base64, filename, mode, company, extract_only, vendor_hint } = JSON.parse(event.body);
+    const { pdf_base64, filename, mode, company, extract_only, vendor_hint, extracted_override } = JSON.parse(event.body);
     if (!pdf_base64) return { statusCode: 400, headers, body: JSON.stringify({ error: "No PDF provided" }) };
 
     const config = getCompanyConfig(company);
@@ -217,6 +246,13 @@ Return ONLY valid JSON:
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, extracted: stmtExtracted, filename, company: company || "USA" }) };
     }
 
+    // Invoice extraction — skipped when the app sends a user-reviewed extraction
+    // (extracted_override): the user may have corrected QB accounts in the queue,
+    // so on confirm we push exactly what they approved (also saves a Claude call)
+    let extracted;
+    if (mode === "confirm" && isValidOverride(extracted_override)) {
+      extracted = sanitizeOverride(extracted_override);
+    } else {
     // Invoice extraction with company-specific prompt
     const response = await Anthropic_client.messages.create({
       model: "claude-sonnet-4-6", max_tokens: 2500, system: config.extractionPrompt + "\n\nIMPORTANT: Output ONLY a single JSON object. Be concise — combine similar line items. No analysis text outside the JSON.",
@@ -226,7 +262,6 @@ Return ONLY valid JSON:
       ] }],
     });
 
-    let extracted;
     try {
       let raw = response.content[0].text;
       raw = raw.replace(/```json|```/g, "").trim();
@@ -237,6 +272,7 @@ Return ONLY valid JSON:
       extracted = JSON.parse(raw);
     }
     catch { throw new Error(`Invalid JSON from Claude: ${response.content[0].text.slice(0, 200)}`); }
+    }
 
     // Override vendor name if vendor_hint provided (manual upload with vendor selection)
     if (vendor_hint) extracted.vendor_name = vendor_hint;

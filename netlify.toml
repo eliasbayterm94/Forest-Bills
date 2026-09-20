@@ -24,6 +24,9 @@
 [functions."vendor-config"]
   timeout = 26
 
+[functions."qb-accounts"]
+  timeout = 26
+
 # Daily email digest at 8:30am UTC (after scan completes)
 [functions."email-digest"]
   schedule = "30 8 * * *"

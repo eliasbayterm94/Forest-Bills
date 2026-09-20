@@ -171,6 +171,8 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--fc
 .mt tr:last-child td{border-bottom:none;}
 .mac{color:var(--fc-blue-700);font-weight:600;}
 .mam{text-align:right;font-family:var(--fc-font-mono);font-weight:600;color:var(--fc-navy);}
+select.acct-sel{width:100%;min-width:150px;max-width:260px;padding:4px 6px;font-size:11px;font-family:var(--fc-font-body);border:1px solid var(--fc-ink-100);border-radius:5px;background:#fff;color:var(--fc-navy);cursor:pointer;}
+select.acct-sel:focus{outline:none;border-color:var(--fc-navy);}
 .badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;}
 .badge.high{background:rgba(77,124,47,.12);color:var(--fc-success);}
 .badge.medium{background:rgba(196,120,32,.12);color:var(--fc-warning);}
@@ -768,6 +770,31 @@ const API    = '/.netlify/functions/process-bill';
 const GMAIL  = '/.netlify/functions/scan-gmail';
 const STATUS = '/.netlify/functions/update-invoice-status';
 const FBILLS = '/.netlify/functions/fetch-bills';
+const ACCTS  = '/.netlify/functions/qb-accounts';
+
+// ── QB accounts (for the editable account dropdown in extracted lines) ──
+let qbAccounts = [];
+async function loadQbAccounts(){
+  try{
+    const r=await authFetch(`${ACCTS}?company=${currentCompany}`);
+    const d=await r.json();
+    if(r.ok && Array.isArray(d.accounts)) qbAccounts=d.accounts;
+  }catch(e){ console.warn('QB accounts load failed:', e.message); }
+}
+const escH=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function acctSelect(invId,idx,current){
+  const cur=current||'';
+  const inList=qbAccounts.includes(cur);
+  const opts=[
+    (!inList&&cur)?`<option value="${escH(cur)}" selected>${escH(cur)} (AI)</option>`:'',
+    ...qbAccounts.map(a=>`<option value="${escH(a)}"${a===cur?' selected':''}>${escH(a)}</option>`),
+  ].join('');
+  return `<select class="acct-sel" onchange="updAcct('${invId}',${idx},this.value)" title="Fix the QB account before pushing">${opts||`<option>${escH(cur)}</option>`}</select>`;
+}
+function updAcct(invId,idx,value){
+  const inv=invs.find(i=>i.id===invId);
+  if(inv?.ext?.line_items?.[idx]) inv.ext.line_items[idx].account=value;
+}
 
 // ── App update: reload bypassing cached HTML so the latest deploy loads ──
 function updateApp() {
@@ -877,6 +904,7 @@ function switchCompany(co) {
   // Reset ALL state
   invs = []; blog = []; qbbills = []; fbills = []; dataLoaded = false;
   sdone = 0; stotal = 0; serr = 0; pushed.clear();
+  qbAccounts = []; loadQbAccounts(); // prefetch QB accounts for the editable dropdown
   document.getElementById('itbody').innerHTML = '<tr class="erow"><td colspan="10">No invoices — scan Gmail or upload PDFs to start</td></tr>';
   kset('queue',0); kset('ext',0); kset('done',0); kset('err',0); kset('total',0);
   // Reset log UI
@@ -1220,6 +1248,7 @@ async function doExtract(inv){
 
     inv.st='extracted';inv.ext=d.extracted;
     setSt(inv.id,'extracted','Extracted');
+    if(!qbAccounts.length) await loadQbAccounts(); // for the account dropdown
     document.getElementById(`vn-${inv.id}`).textContent=d.extracted.vendor_name||'—';
     document.getElementById(`in-${inv.id}`).textContent=d.extracted.invoice_number||'—';
     document.getElementById(`am-${inv.id}`).textContent=`$${(d.extracted.total_amount||0).toFixed(2)}`;
@@ -1229,8 +1258,8 @@ async function doExtract(inv){
         <div><div class="dll">Invoice Date</div><div class="dv">${d.extracted.invoice_date||'—'}</div></div>
         <div><div class="dll">Due Date</div><div class="dv">${d.extracted.due_date||'—'}</div></div>
         <div><div class="dll">Terms</div><div class="dv">${d.extracted.payment_terms||'Net 30'}</div></div>
-        <div><table class="mt"><thead><tr><th>QB Account</th><th>Description</th><th>Conf.</th><th style="text-align:right">Amount</th></tr></thead><tbody>
-          ${(d.extracted.line_items||[]).map(l=>`<tr><td class="mac">${l.account}</td><td>${l.description}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
+        <div><table class="mt"><thead><tr><th>QB Account <span style="font-weight:400;text-transform:none;letter-spacing:0">(editable)</span></th><th>Description</th><th>Conf.</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+          ${(d.extracted.line_items||[]).map((l,li)=>`<tr><td class="mac">${acctSelect(inv.id,li,l.account)}</td><td>${l.description}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
         </tbody></table></div>`;
       document.getElementById(`d-${inv.id}`)?.classList.add('open');
     }
@@ -1252,7 +1281,7 @@ async function doPush(inv){
   if(pushed.has(dk)){inv.st='duplicate';setSt(inv.id,'duplicate','⚠ Duplicate');document.getElementById(`qb-${inv.id}`).textContent='Already pushed';return;}
   inv.st='pushing';setSt(inv.id,'pushing','⏳ Pushing...');
   try{
-    const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||''})});
+    const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||'',extracted_override:inv.ext})});
     const data=await r.json();if(!r.ok) throw new Error(data.error||'QB push failed');
     inv.st='done';inv.bid=data.bill_id;inv.qurl=data.qb_url;
     setSt(inv.id,'done',data.already_existed?'✓ Already in QB':'✓ In QB');
