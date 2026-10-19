@@ -117,23 +117,56 @@ async function createQBBill(extracted, doc, filename, token, qb, config, normali
   const lines = [];
   // Cache tax code lookups
   const taxCodeCache = {};
+  let allTaxCodes = null;
+  async function listTaxCodes() {
+    if (allTaxCodes) return allTaxCodes;
+    const d = await (await fetch(`${base}/query?query=${encodeURIComponent("SELECT * FROM TaxCode MAXRESULTS 200")}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })).json();
+    allTaxCodes = (d.QueryResponse?.TaxCode || []).filter(tc => tc.Active !== false);
+    return allTaxCodes;
+  }
   async function getTaxCodeRef(taxCodeName) {
     if (!taxCodeName) return null;
     if (taxCodeCache[taxCodeName]) return taxCodeCache[taxCodeName];
-    const q = `SELECT * FROM TaxCode WHERE Name = '${taxCodeName.replace(/'/g, "\\'")}'`;
     try {
+      // Exact name match (how AU codes like "GST on purchases" are configured)
+      const q = `SELECT * FROM TaxCode WHERE Name = '${taxCodeName.replace(/'/g, "\\'")}'`;
       const d = await (await fetch(`${base}/query?query=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })).json();
       const tc = d.QueryResponse?.TaxCode?.[0];
       if (tc) { taxCodeCache[taxCodeName] = { value: tc.Id }; return taxCodeCache[taxCodeName]; }
-    } catch (e) { console.warn(`Tax code lookup failed for ${taxCodeName}:`, e.message); }
-    return null;
+
+      // Fuzzy fallback: the extraction says e.g. "IVA 21%" but the QB company may
+      // name it "21,0% IVA Soportado" — match by name, then by rate among codes
+      // that have a purchase side
+      const codes = await listTaxCodes();
+      const want = taxCodeName.toLowerCase();
+      const rate = (want.match(/(\d+(?:[.,]\d+)?)\s*%/) || [])[1];
+      const isPurchase = tc2 => (tc2.PurchaseTaxRateList?.TaxRateDetail || []).length > 0;
+      const found =
+        codes.find(c => c.Name.toLowerCase() === want) ||
+        codes.find(c => c.Name.toLowerCase().includes(want) || want.includes(c.Name.toLowerCase())) ||
+        (rate ? codes.find(c => isPurchase(c) && new RegExp(`(^|[^\\d])${rate}([.,]0+)?\\s*%?([^\\d]|$)`).test(c.Name.replace(/,/g, "."))) : null) ||
+        (/exent|exempt|no sujeto/i.test(want) ? codes.find(c => /exent|exempt|out of scope/i.test(c.Name) && isPurchase(c)) : null);
+      if (found) {
+        console.log(`Tax code "${taxCodeName}" resolved to QB tax code "${found.Name}"`);
+        taxCodeCache[taxCodeName] = { value: found.Id };
+        return taxCodeCache[taxCodeName];
+      }
+      // Listing worked and nothing matches: pushing without the tax code would
+      // book the bill short by the tax amount, so fail with the available names
+      const avail = codes.filter(isPurchase).map(c => c.Name).slice(0, 15).join(", ") || "none";
+      throw new Error(`Tax code "${taxCodeName}" not found in QuickBooks (${config.entity}). Available purchase tax codes: ${avail}`);
+    } catch (e) {
+      if (/not found in QuickBooks/.test(e.message)) throw e;
+      console.warn(`Tax code lookup failed for ${taxCodeName}:`, e.message);
+      return null;
+    }
   }
 
   for (const item of extracted.line_items) {
     const ref = await getAccountRef(item.account, token, realmId, baseUrl);
     if (!ref) { console.warn(`Account not found: ${item.account}`); continue; }
     const lineDetail = { AccountRef: ref };
-    // Add tax code if present (AU invoices)
+    // Add tax code if present (AU GST, Spanish IVA)
     if (item.tax_code) {
       const tcRef = await getTaxCodeRef(item.tax_code);
       if (tcRef) lineDetail.TaxCodeRef = tcRef;

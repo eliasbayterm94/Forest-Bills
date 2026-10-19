@@ -1259,7 +1259,7 @@ async function doExtract(inv){
         <div><div class="dll">Due Date</div><div class="dv">${d.extracted.due_date||'—'}</div></div>
         <div><div class="dll">Terms</div><div class="dv">${d.extracted.payment_terms||'Net 30'}</div></div>
         <div><table class="mt"><thead><tr><th>QB Account <span style="font-weight:400;text-transform:none;letter-spacing:0">(editable)</span></th><th>Description</th><th>Conf.</th><th style="text-align:right">Amount</th></tr></thead><tbody>
-          ${(d.extracted.line_items||[]).map((l,li)=>`<tr><td class="mac">${acctSelect(inv.id,li,l.account)}</td><td>${l.description}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
+          ${(d.extracted.line_items||[]).map((l,li)=>`<tr><td class="mac">${acctSelect(inv.id,li,l.account)}</td><td>${l.description}${l.tax_code?` <span class="badge" style="background:rgba(125,200,85,.15);color:#7dc855">${escH(l.tax_code)}</span>`:''}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
         </tbody></table></div>`;
       document.getElementById(`d-${inv.id}`)?.classList.add('open');
     }

@@ -230,6 +230,18 @@ VENDOR RULES:
    - Invoice number format: 7126006034, 7127000256, etc.
    - Payment terms: 7 days from invoice date.
 
+6. SPANISH VENDORS (any vendor with a Spanish address or NIF/CIF, invoice shows IVA):
+   Spanish invoices show Base Imponible + IVA (21%, 10% or 4%) + Total.
+   - Use the amount EXCLUDING IVA (base imponible) for each line item, NOT the total.
+   - For each line item include a "tax_code" field with the IVA rate shown:
+     - 21% IVA → tax_code: "IVA 21%"
+     - 10% IVA → tax_code: "IVA 10%"
+     - 4% IVA → tax_code: "IVA 4%"
+     - Exempt lines ("exento", "no sujeto", 0%) → tax_code: "IVA Exento"
+   - total_amount = TOTAL INCLUDING IVA (the final total the vendor charges).
+   - Map lines to the closest account by service type: freight/transport → "Shipping and delivery expense",
+     storage/warehousing → "Storage", customs → "Clearance". If unclear, use "Shipping and delivery expense" and explain in notes.
+
 RULES:
 - Combine same-account lines into a single line item.
 - For multi-type invoices (e.g. Vollers Import), SPLIT into separate line items per account.
@@ -239,7 +251,9 @@ RULES:
 - If due_date equals invoice_date, note "immediate payment" in notes.
 
 Return ONLY valid JSON:
-{"vendor_name":"","vendor_address":"","invoice_number":"","invoice_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","payment_terms":"","total_amount":0,"currency":"EUR","exchange_rate":null,"line_items":[{"account":"","description":"","amount":0,"confidence":"high|medium|low"}],"overall_confidence":"high|medium|low","notes":""}
+{"vendor_name":"","vendor_address":"","invoice_number":"","invoice_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","payment_terms":"","total_amount":0,"currency":"EUR","exchange_rate":null,"line_items":[{"account":"","description":"","amount":0,"tax_code":null,"confidence":"high|medium|low"}],"overall_confidence":"high|medium|low","notes":""}
+
+The tax_code field is ONLY for Spanish vendors with IVA (rule 6). For all other vendors set tax_code to null or omit it.
 
 IMPORTANT: For GBP invoices, set currency to "GBP". The exchange_rate field is the GBP to EUR rate (e.g. 1.17 means 1 GBP = 1.17 EUR). If the invoice does not state an exchange rate, set exchange_rate to null and the system will use 1 as default.`,
   },
