@@ -7,6 +7,55 @@ const Anthropic_client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }
 
 const { getValidAccessToken } = require("./qb-auth");
 
+// ─── Document preparation ─────────────────────────────────────────────────────
+// Some vendor download links serve the PDF with HTTP response headers glued in
+// front of %PDF- (seen in production: 201 bytes of "date:/etag:/content-length"
+// junk before the real file), and some "PDFs" are actually images renamed to
+// .pdf. Claude's API rejects both with an opaque 400 ("The PDF specified was
+// not valid"), so repair or adapt the payload here instead of failing.
+const UPLOAD_ERRORS = {
+  UPLOAD_EMPTY: "The uploaded file is empty or could not be decoded. Download the invoice again and retry.",
+  UPLOAD_ENCRYPTED: "This PDF is password-protected. Open it in a PDF viewer, use Print → Save as PDF to make an unprotected copy, and upload that copy.",
+  UPLOAD_NOT_PDF: "This file is not a readable PDF or image — it may be corrupted or an unsupported format. Download the invoice again from the vendor and retry.",
+};
+
+const IMAGE_MAGIC = [
+  { type: "image/jpeg", bytes: [0xff, 0xd8, 0xff] },
+  { type: "image/png",  bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { type: "image/gif",  bytes: [0x47, 0x49, 0x46, 0x38] },
+];
+
+function prepareDocument(b64) {
+  let buf;
+  try { buf = Buffer.from(b64 || "", "base64"); } catch { buf = Buffer.alloc(0); }
+  if (!buf.length) throw new Error("UPLOAD_EMPTY");
+
+  // PDF — possibly with junk prepended; the real header must appear early
+  const idx = buf.indexOf("%PDF-");
+  if (idx >= 0 && idx < 4096) {
+    if (idx > 0) {
+      console.warn(`prepareDocument: stripped ${idx} junk bytes before %PDF- header`);
+      buf = buf.subarray(idx);
+    }
+    if (buf.includes("/Encrypt")) throw new Error("UPLOAD_ENCRYPTED");
+    return { kind: "pdf", base64: idx > 0 ? buf.toString("base64") : b64, mediaType: "application/pdf" };
+  }
+
+  // Image renamed to .pdf (vendors export phone scans this way)
+  const img = IMAGE_MAGIC.find(m => m.bytes.every((v, i) => buf[i] === v));
+  const isWebp = buf.length > 12 && buf.toString("latin1", 0, 4) === "RIFF" && buf.toString("latin1", 8, 12) === "WEBP";
+  if (img || isWebp) return { kind: "image", base64: b64, mediaType: img ? img.type : "image/webp" };
+
+  throw new Error("UPLOAD_NOT_PDF");
+}
+
+// Claude content block for the prepared document (PDFs and images need different types)
+function fileBlock(doc) {
+  return doc.kind === "image"
+    ? { type: "image", source: { type: "base64", media_type: doc.mediaType, data: doc.base64 } }
+    : { type: "document", source: { type: "base64", media_type: "application/pdf", data: doc.base64 } };
+}
+
 // ─── QB Helpers ───────────────────────────────────────────────────────────────
 async function findOrCreateVendor(name, token, realmId, baseUrl) {
   const base = `${baseUrl}/v3/company/${realmId}`;
@@ -26,13 +75,13 @@ async function getAccountRef(name, token, realmId, baseUrl) {
   return a ? { value: a.Id, name: a.Name } : null;
 }
 
-async function attachPDF(billId, pdfBase64, filename, token, realmId, baseUrl) {
+async function attachPDF(billId, pdfBase64, filename, token, realmId, baseUrl, mediaType = "application/pdf") {
   const base = `${baseUrl}/v3/company/${realmId}`;
   const boundary = `----FB${Date.now()}`;
-  const meta = JSON.stringify({ AttachableRef: [{ EntityRef: { type: "Bill", value: String(billId) } }], ContentType: "application/pdf", FileName: filename || `bill-${billId}.pdf` });
+  const meta = JSON.stringify({ AttachableRef: [{ EntityRef: { type: "Bill", value: String(billId) } }], ContentType: mediaType, FileName: filename || `bill-${billId}.pdf` });
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file_metadata_01"\r\nContent-Type: application/json\r\n\r\n${meta}\r\n`, "utf8"),
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file_content_01"; filename="${filename || "invoice.pdf"}"\r\nContent-Type: application/pdf\r\n\r\n`, "utf8"),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file_content_01"; filename="${filename || "invoice.pdf"}"\r\nContent-Type: ${mediaType}\r\n\r\n`, "utf8"),
     Buffer.from(pdfBase64, "base64"),
     Buffer.from(`\r\n--${boundary}--`, "utf8"),
   ]);
@@ -54,7 +103,7 @@ async function checkDuplicate(invoiceNumber, vendorId, accessToken, realmId, bas
   return bills.find(b => b.VendorRef?.value === vendorId) || null;
 }
 
-async function createQBBill(extracted, pdfBase64, filename, token, qb, config, normalizedVendor) {
+async function createQBBill(extracted, doc, filename, token, qb, config, normalizedVendor) {
   const { realmId, baseUrl } = qb;
   const base = `${baseUrl}/v3/company/${realmId}`;
 
@@ -148,7 +197,7 @@ async function createQBBill(extracted, pdfBase64, filename, token, qb, config, n
   if (!billData.Bill) throw new Error(`QB bill creation failed: ${JSON.stringify(billData.Fault || billData)}`);
 
   const billId = billData.Bill.Id;
-  if (pdfBase64) { try { await attachPDF(billId, pdfBase64, filename, token, realmId, baseUrl); } catch (e) { console.warn("PDF attach failed:", e.message); } }
+  if (doc?.base64) { try { await attachPDF(billId, doc.base64, filename, token, realmId, baseUrl, doc.mediaType); } catch (e) { console.warn("PDF attach failed:", e.message); } }
   return { billId, alreadyExisted: false };
 }
 
@@ -199,6 +248,16 @@ exports.handler = async (event) => {
     const config = getCompanyConfig(company);
     const qb = getQBEnvVars(config);
 
+    // Repair/classify the upload before anything touches it (junk-prefixed PDFs,
+    // images renamed .pdf, encrypted or corrupted files get clear errors here)
+    let doc;
+    try { doc = prepareDocument(pdf_base64); }
+    catch (e) {
+      const friendly = UPLOAD_ERRORS[e.message];
+      if (friendly) return { statusCode: 400, headers, body: JSON.stringify({ error: friendly, filename }) };
+      throw e;
+    }
+
     // Statement extraction mode — different prompt, no QB push
     if (mode === "statement") {
       const stmtPrompt = `You are an expert accounting assistant. Extract structured data from this vendor STATEMENT (not invoice).
@@ -227,7 +286,7 @@ Return ONLY valid JSON:
       const stmtResponse = await Anthropic_client.messages.create({
         model: "claude-sonnet-4-6", max_tokens: 4000, system: stmtPrompt + "\n\nIMPORTANT: After your analysis, output ONLY a single JSON object. Do not include any text outside the JSON.",
         messages: [{ role: "user", content: [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf_base64 } },
+          fileBlock(doc),
           { type: "text", text: "Extract all invoice lines from this statement. Output a single JSON object with the result." },
         ] }],
       });
@@ -257,7 +316,7 @@ Return ONLY valid JSON:
     const response = await Anthropic_client.messages.create({
       model: "claude-sonnet-4-6", max_tokens: 2500, system: config.extractionPrompt + "\n\nIMPORTANT: Output ONLY a single JSON object. Be concise — combine similar line items. No analysis text outside the JSON.",
       messages: [{ role: "user", content: [
-        { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf_base64 } },
+        fileBlock(doc),
         { type: "text", text: "Extract invoice data. Output JSON only, no other text." },
       ] }],
     });
@@ -295,7 +354,7 @@ Return ONLY valid JSON:
       }
     } catch(e) {}
 
-    const { billId, alreadyExisted } = await createQBBill(extracted, pdf_base64, filename, token, qb, config, normalizedVendor);
+    const { billId, alreadyExisted } = await createQBBill(extracted, doc, filename, token, qb, config, normalizedVendor);
     const qb_url = `https://app.qbo.intuit.com/app/bill?txnId=${billId}`;
 
     // Persist to blob log
@@ -323,6 +382,11 @@ Return ONLY valid JSON:
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, bill_id: billId, already_existed: alreadyExisted, extracted, normalized_vendor: normalizedVendor, filename, qb_url, company: company || "USA" }) };
   } catch (err) {
     console.error("process-bill error:", err);
+    // Anthropic rejects unreadable documents with an opaque 400; surface it as
+    // a user-fixable problem rather than a generic server error
+    if (/PDF specified was not valid|could not process (the )?(pdf|image|document)/i.test(err.message || "")) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "The AI could not read this file as a PDF. It may be corrupted — open it on your computer to verify, or re-download it from the vendor and upload again." }) };
+    }
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
