@@ -1258,6 +1258,8 @@ async function doExtract(inv){
         <div><div class="dll">Invoice Date</div><div class="dv">${d.extracted.invoice_date||'—'}</div></div>
         <div><div class="dll">Due Date</div><div class="dv">${d.extracted.due_date||'—'}</div></div>
         <div><div class="dll">Terms</div><div class="dv">${d.extracted.payment_terms||'Net 30'}</div></div>
+        ${d.extracted.validation&&d.extracted.validation.balanced===false?`<div style="grid-column:1/-1;background:rgba(224,82,82,.12);border:1px solid rgba(224,82,82,.4);border-radius:8px;padding:8px 12px;font-size:12px;color:#e05252;font-weight:600">⚠ Las líneas suman ${d.extracted.validation.line_sum} pero el total de la factura es ${d.extracted.validation.total_amount} (diferencia ${d.extracted.validation.difference}). Vuelve a extraer o revisa antes de subir.</div>`:''}
+        ${d.extracted.validation&&d.extracted.validation.balanced===true?`<div style="grid-column:1/-1;font-size:11px;color:#7dc855">✓ Las líneas cuadran con el total de la factura (${d.extracted.validation.total_amount})</div>`:''}
         <div><table class="mt"><thead><tr><th>QB Account <span style="font-weight:400;text-transform:none;letter-spacing:0">(editable)</span></th><th>Description</th><th>Conf.</th><th style="text-align:right">Amount</th></tr></thead><tbody>
           ${(d.extracted.line_items||[]).map((l,li)=>`<tr><td class="mac">${acctSelect(inv.id,li,l.account)}</td><td>${l.description}${l.tax_code?` <span class="badge" style="background:rgba(125,200,85,.15);color:#7dc855">${escH(l.tax_code)}</span>`:''}</td><td><span class="badge ${l.confidence}">${l.confidence}</span></td><td class="mam">$${l.amount?.toFixed(2)}</td></tr>`).join('')}
         </tbody></table></div>`;
@@ -1279,9 +1281,17 @@ async function doPush(inv){
   const d=inv.ext||{};
   const dk=`${(d.vendor_name||'').toLowerCase()}-${(d.invoice_number||'').toLowerCase()}`;
   if(pushed.has(dk)){inv.st='duplicate';setSt(inv.id,'duplicate','⚠ Duplicate');document.getElementById(`qb-${inv.id}`).textContent='Already pushed';return;}
+  // Never push a mismatched extraction silently: the user must confirm the difference
+  let allowUnbalanced=false;
+  if(d.validation&&d.validation.balanced===false){
+    if(!confirm(`⚠ Las líneas suman ${d.validation.line_sum} pero el total de la factura es ${d.validation.total_amount} (diferencia ${d.validation.difference}).\n\n¿Subir a QuickBooks de todas formas con esta diferencia?`)){
+      setSt(inv.id,'extracted','⚠ Revisa los montos');return;
+    }
+    allowUnbalanced=true;
+  }
   inv.st='pushing';setSt(inv.id,'pushing','⏳ Pushing...');
   try{
-    const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||'',extracted_override:inv.ext})});
+    const r=await authFetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:inv.b64,filename:inv.fn,mode:'confirm',company:currentCompany,vendor_hint:inv.vendorHint||'',extracted_override:inv.ext,allow_unbalanced:allowUnbalanced})});
     const data=await r.json();if(!r.ok) throw new Error(data.error||'QB push failed');
     inv.st='done';inv.bid=data.bill_id;inv.qurl=data.qb_url;
     setSt(inv.id,'done',data.already_existed?'✓ Already in QB':'✓ In QB');

@@ -177,15 +177,20 @@ VENDOR RULES:
    
    a) OUTBOUND ORDERS (Remark: "Outbound orders"):
       These invoices can have 50-90+ individual line items across multiple pages.
-      DO NOT analyze each line individually. Instead:
-      1. Find the TOTAL on the last page (e.g. "Total incl. VAT EUR 2.140,25")
-      2. Scan line descriptions to identify amounts per category:
+      DO NOT add amounts yourself — LLM arithmetic over long lists is unreliable.
+      Instead, TRANSCRIBE each position's amount into its category's "amounts" array
+      and the system will sum them:
+      1. Find the TOTAL on the last page (e.g. "Total incl. VAT EUR 2.140,25") → total_amount.
+      2. Go position by position (Pos 1, 2, 3...) and append each amount to the
+         "amounts" array of its category:
          - "Shipping and delivery expense:Handling & Loadout": Palletising, Loading truck, Handling-Bag fee, Pallets/One way pallets, Toeslag (surcharge)
-         - "Clearance": VAT-administration, Export declaration, T2LF document
+         - "Clearance": VAT-administration, Export declaration, T2LF document, Additional item(s) on customs
          - "Shipping and delivery expense": Transport lines (with route like "Dongen-Amsterdam")
-         - "Shipping and delivery expense:Container Carry out cost": Fuel surcharge
-      3. Sum each category and output ONLY 2-4 combined line items (one per category).
-      The sum of all line items MUST equal the invoice total.
+         - "Shipping and delivery expense:Container Carry out cost": Fuel surcharge, Toll (toll surcharge)
+      3. Output one line item per category with "amount": 0 and "amounts": [each, individual, amount].
+         Example: {"account":"Clearance","description":"VAT-admin, export declarations (12 pos)","amount":0,"amounts":[10.00,10.00,8.40,70.64],"confidence":"high"}
+      Every position of the invoice MUST appear in exactly one amounts array —
+      count the positions (Pos numbers) and make sure none is skipped.
    
    b) WAREHOUSE RENT (all lines are "Warehouse rent raw coffee"):
       - ALL lines → "Storage"
@@ -251,7 +256,9 @@ RULES:
 - If due_date equals invoice_date, note "immediate payment" in notes.
 
 Return ONLY valid JSON:
-{"vendor_name":"","vendor_address":"","invoice_number":"","invoice_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","payment_terms":"","total_amount":0,"currency":"EUR","exchange_rate":null,"line_items":[{"account":"","description":"","amount":0,"tax_code":null,"confidence":"high|medium|low"}],"overall_confidence":"high|medium|low","notes":""}
+{"vendor_name":"","vendor_address":"","invoice_number":"","invoice_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","payment_terms":"","total_amount":0,"currency":"EUR","exchange_rate":null,"line_items":[{"account":"","description":"","amount":0,"amounts":null,"tax_code":null,"confidence":"high|medium|low"}],"overall_confidence":"high|medium|low","notes":""}
+
+For ANY invoice with more than ~10 individual charge lines going to one account, prefer transcribing the individual amounts into that line item's "amounts" array (with "amount": 0) instead of adding them yourself — the system sums the array. For simple invoices just set "amount" directly and omit "amounts".
 
 The tax_code field is ONLY for Spanish vendors with IVA (rule 6). For all other vendors set tax_code to null or omit it.
 

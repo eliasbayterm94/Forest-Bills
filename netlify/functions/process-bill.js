@@ -234,6 +234,38 @@ async function createQBBill(extracted, doc, filename, token, qb, config, normali
   return { billId, alreadyExisted: false };
 }
 
+// ─── Line-item normalization & arithmetic validation ──────────────────────────
+// Long invoices (Vollers outbound: 50-90 positions) made the AI sum amounts
+// mentally, which produced bills that didn't match the invoice total. The AI
+// now transcribes per-category amounts into an "amounts" array and the sum is
+// done here; validateTotals then compares lines vs the invoice total so an
+// unbalanced extraction gets retried and is never pushed silently.
+const r2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+function normalizeLineItems(extracted) {
+  for (const l of extracted.line_items || []) {
+    if (Array.isArray(l.amounts) && l.amounts.length) {
+      const nums = l.amounts.map(Number).filter(Number.isFinite);
+      l.amount = r2(nums.reduce((a, b) => a + b, 0));
+    }
+    delete l.amounts;
+  }
+  return extracted;
+}
+
+function validateTotals(extracted) {
+  const items = extracted.line_items || [];
+  const lineSum = r2(items.reduce((a, l) => a + (Number(l.amount) || 0), 0));
+  const total = Number(extracted.total_amount) || 0;
+  // Tax-coded lines carry the base amount while the total includes tax, so the
+  // straight comparison only holds for invoices without tax codes
+  const comparable = total > 0 && items.length > 0 && !items.some(l => l.tax_code);
+  const difference = r2(lineSum - total);
+  return comparable
+    ? { line_sum: lineSum, total_amount: total, difference, balanced: Math.abs(difference) <= 0.02 }
+    : { line_sum: lineSum, total_amount: total, difference: null, balanced: null };
+}
+
 // The app can push a user-reviewed extraction (e.g. corrected QB accounts)
 // instead of re-extracting: what the user approved is exactly what gets pushed
 function isValidOverride(o) {
@@ -275,7 +307,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method not allowed" };
 
   try {
-    const { pdf_base64, filename, mode, company, extract_only, vendor_hint, extracted_override } = JSON.parse(event.body);
+    const { pdf_base64, filename, mode, company, extract_only, vendor_hint, extracted_override, allow_unbalanced } = JSON.parse(event.body);
     if (!pdf_base64) return { statusCode: 400, headers, body: JSON.stringify({ error: "No PDF provided" }) };
 
     const config = getCompanyConfig(company);
@@ -342,34 +374,74 @@ Return ONLY valid JSON:
     // (extracted_override): the user may have corrected QB accounts in the queue,
     // so on confirm we push exactly what they approved (also saves a Claude call)
     let extracted;
-    if (mode === "confirm" && isValidOverride(extracted_override)) {
+    const usedOverride = mode === "confirm" && isValidOverride(extracted_override);
+    if (usedOverride) {
       extracted = sanitizeOverride(extracted_override);
     } else {
     // Invoice extraction with company-specific prompt
+    const extractionText = "Extract invoice data. Output JSON only, no other text.";
     const response = await Anthropic_client.messages.create({
-      model: "claude-sonnet-4-6", max_tokens: 2500, system: config.extractionPrompt + "\n\nIMPORTANT: Output ONLY a single JSON object. Be concise — combine similar line items. No analysis text outside the JSON.",
+      model: "claude-sonnet-4-6", max_tokens: 3500, system: config.extractionPrompt + "\n\nIMPORTANT: Output ONLY a single JSON object. Be concise — combine similar line items. No analysis text outside the JSON.",
       messages: [{ role: "user", content: [
         fileBlock(doc),
-        { type: "text", text: "Extract invoice data. Output JSON only, no other text." },
+        { type: "text", text: extractionText },
       ] }],
     });
 
-    try {
-      let raw = response.content[0].text;
+    const parseExtraction = (resp) => {
+      let raw = (resp.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       raw = raw.replace(/```json|```/g, "").trim();
       // Extract JSON object from response (skip any reasoning text before/after)
       const jsonStart = raw.indexOf('{');
       const jsonEnd = raw.lastIndexOf('}');
       if (jsonStart >= 0 && jsonEnd > jsonStart) raw = raw.slice(jsonStart, jsonEnd + 1);
-      extracted = JSON.parse(raw);
+      return JSON.parse(raw);
+    };
+
+    try { extracted = parseExtraction(response); }
+    catch { throw new Error(`Invalid JSON from Claude: ${JSON.stringify(response.content?.[0] || {}).slice(0, 200)}`); }
+
+    // Arithmetic check: if the lines don't add up to the invoice total, tell
+    // the AI the exact gap and let it re-examine once — it usually finds the
+    // skipped or miscopied position on the second pass
+    normalizeLineItems(extracted);
+    let v = validateTotals(extracted);
+    if (v.balanced === false) {
+      console.warn(`Extraction unbalanced for ${filename}: lines ${v.line_sum} vs total ${v.total_amount}; retrying with feedback`);
+      try {
+        const retry = await Anthropic_client.messages.create({
+          model: "claude-sonnet-4-6", max_tokens: 3500, system: config.extractionPrompt + "\n\nIMPORTANT: Output ONLY a single JSON object. No analysis text outside the JSON.",
+          messages: [
+            { role: "user", content: [fileBlock(doc), { type: "text", text: extractionText }] },
+            { role: "assistant", content: JSON.stringify(extracted) },
+            { role: "user", content: `Your line items sum to ${v.line_sum} but the invoice total is ${v.total_amount} (difference: ${v.difference}). Re-examine the invoice position by position — at least one amount was skipped, duplicated or miscopied. Transcribe every position's amount into the matching line item's "amounts" array and output the corrected full JSON only.` },
+          ],
+        });
+        const candidate = normalizeLineItems(parseExtraction(retry));
+        const v2 = validateTotals(candidate);
+        if (v2.balanced || (v2.difference !== null && Math.abs(v2.difference) < Math.abs(v.difference))) { extracted = candidate; v = v2; }
+      } catch (e) { console.warn("Corrective retry failed:", e.message); }
     }
-    catch { throw new Error(`Invalid JSON from Claude: ${response.content[0].text.slice(0, 200)}`); }
     }
 
     // Override vendor name if vendor_hint provided (manual upload with vendor selection)
     if (vendor_hint) extracted.vendor_name = vendor_hint;
 
+    // Final totals check travels with the extraction so the review screen can
+    // flag a mismatch (recomputed here to also cover the override path)
+    normalizeLineItems(extracted);
+    extracted.validation = validateTotals(extracted);
+
     if (mode === "preview" || extract_only) return { statusCode: 200, headers, body: JSON.stringify({ success: true, extracted, filename, company: company || "USA" }) };
+
+    // Never push a bill whose lines don't match the invoice total unless the
+    // user explicitly confirmed the difference in the review screen
+    if (extracted.validation.balanced === false && !allow_unbalanced) {
+      return { statusCode: 400, headers, body: JSON.stringify({
+        error: `Line items sum to ${extracted.validation.line_sum} but the invoice total is ${extracted.validation.total_amount} (difference ${extracted.validation.difference}). Re-extract or confirm pushing with this difference.`,
+        unbalanced: true, validation: extracted.validation,
+      }) };
+    }
 
     // Push to QB
     if (!qb.realmId) throw new Error(`QB_REALM_ID missing for ${config.entity}`);
