@@ -151,8 +151,14 @@ async function createQBBill(extracted, doc, filename, token, qb, config, normali
         taxCodeCache[taxCodeName] = { value: found.Id };
         return taxCodeCache[taxCodeName];
       }
-      // Listing worked and nothing matches: pushing without the tax code would
-      // book the bill short by the tax amount, so fail with the available names
+      // Exempt/0% lines carry no tax to add, so when the company has no
+      // matching exempt code the line can safely go through without one
+      if (/exent|exempt|no sujeto|out of scope/i.test(want) || rate === "0") {
+        console.warn(`Exempt tax code "${taxCodeName}" not in QuickBooks (${config.entity}); pushing line without tax code`);
+        return null;
+      }
+      // Listing worked and nothing matches a RATED code: pushing without it
+      // would book the bill short by the tax amount, so fail with the names
       const avail = codes.filter(isPurchase).map(c => c.Name).slice(0, 15).join(", ") || "none";
       throw new Error(`Tax code "${taxCodeName}" not found in QuickBooks (${config.entity}). Available purchase tax codes: ${avail}`);
     } catch (e) {
@@ -183,9 +189,11 @@ async function createQBBill(extracted, doc, filename, token, qb, config, normali
     Line: lines,
   };
 
-  // If any line has a tax_code, set GlobalTaxCalculation to TaxExclusive
-  // This tells QB the line amounts are EXCLUDING tax, and QB should calculate tax on top
-  const hasTaxCodes = (extracted.line_items || []).some(i => i.tax_code);
+  // If any line actually carries a TaxCodeRef, set GlobalTaxCalculation to
+  // TaxExcluded: amounts are pre-tax and QB calculates tax on top. Based on
+  // the attached refs (not the extraction) so an exempt code that didn't
+  // resolve leaves the bill as a plain no-tax bill, like before tax support.
+  const hasTaxCodes = lines.some(l => l.AccountBasedExpenseLineDetail?.TaxCodeRef);
   if (hasTaxCodes) {
     billPayload.GlobalTaxCalculation = "TaxExcluded";
   }
