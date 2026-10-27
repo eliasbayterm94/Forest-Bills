@@ -14,8 +14,11 @@
 [functions."scan-gmail"]
   timeout = 26
 
+# Every 4 hours: EU vendors send invoices during the European business day
+# (after the old 08:00 run), so a single daily scan left the queue empty all
+# afternoon until someone pressed Scan Gmail manually
 [functions."scheduled-scan"]
-  schedule = "0 8 * * *"
+  schedule = "0 */4 * * *"
   timeout = 26
 
 [functions."fetch-bills"]

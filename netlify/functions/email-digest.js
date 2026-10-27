@@ -73,7 +73,7 @@ async function getOverdueBills(config, companyKey) {
   }
 }
 
-function buildEmailHTML(summaries) {
+function buildEmailHTML(summaries, scanAlert) {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const totalPending = summaries.reduce((s, c) => s + c.pending, 0);
   const totalNew = summaries.reduce((s, c) => s + c.newToday, 0);
@@ -94,7 +94,13 @@ function buildEmailHTML(summaries) {
   </div>
   <div style="padding:24px;">
     <div style="font-size:13px;color:#8b90a8;margin-bottom:16px;">${today}</div>
-    
+    ${scanAlert ? `
+    <div style="background:rgba(224,82,82,0.15);border:1px solid rgba(224,82,82,0.5);border-radius:6px;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:800;color:#e05252;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">⚠️ Alerta del scan automático</div>
+      <div style="font-size:12px;color:#f0f2f8;line-height:1.5;">${scanAlert}</div>
+      <div style="font-size:11px;color:#8b90a8;margin-top:6px;">Revisa Settings → Automation Status en la app, o corre un Scan Gmail manual.</div>
+    </div>` : ''}
+
     <div style="display:flex;gap:12px;margin-bottom:12px;">
       <div style="flex:1;background:#252b4a;border-radius:6px;padding:12px 16px;text-align:center;">
         <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8b90a8;">New Today</div>
@@ -255,21 +261,42 @@ exports.handler = async (event) => {
       });
     }
 
+    // Scan watchdog: the 8:00 scheduled scan writes a heartbeat; if it's
+    // missing, stale, or carries errors, the digest leads with an alert so a
+    // silently-dead scan never goes unnoticed
+    let scanAlert = null;
+    try {
+      const auto = (await store.get("automation-status", { type: "json" })) || {};
+      const scan = auto.scan;
+      if (!scan?.ran_at) {
+        scanAlert = "No hay registro de que el scan automático haya corrido (sin heartbeat).";
+      } else {
+        const ageH = (Date.now() - new Date(scan.ran_at).getTime()) / 36e5;
+        const errs = (scan.results || []).filter(r => r.error).map(r => `${r.company}: ${r.error}`);
+        // Scan runs every 4h; more than 6h of silence means 2+ missed runs
+        if (ageH > 6) {
+          scanAlert = `El scan automático NO ha corrido en las últimas ${Math.round(ageH)} horas (último: ${String(scan.ran_at).slice(0, 16).replace("T", " ")} UTC).`;
+        } else if (scan.ok === false || errs.length) {
+          scanAlert = `El scan corrió pero con errores: ${errs.join(" · ") || scan.error || "error desconocido"}`;
+        }
+      }
+    } catch (e) { console.warn("Scan watchdog check failed:", e.message); }
+
     // Only send if there's something to report
     const totalPending = summaries.reduce((s, c) => s + c.pending, 0);
     const totalNew = summaries.reduce((s, c) => s + c.newToday, 0);
     const totalOverdue = summaries.reduce((s, c) => s + c.overdue.length, 0);
 
-    if (totalPending === 0 && totalNew === 0 && totalOverdue === 0) {
-      await writeHeartbeat({ ran_at: new Date().toISOString(), ok: true, sent: 0, message: "Nothing to report — no email sent" });
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: "Nothing to report — no email sent" }) };
-    }
-
+    // The digest always sends, even on an all-clear day: its arrival doubles
+    // as the daily heartbeat, so a missing digest reliably means something is
+    // down (and a dead scan reporting "nothing new" must never look quiet)
     const gmail = await getGmailClient();
     const dateFormatted = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-    const details = [totalNew > 0 ? `${totalNew} nuevas` : null, totalPending > 0 ? `${totalPending} pendientes` : null, totalOverdue > 0 ? `${totalOverdue} vencidas` : null].filter(Boolean).join(" | ");
-    const subject = `Resumen diario (${dateFormatted}) Forest Bills - ${details}`;
-    const htmlBody = buildEmailHTML(summaries);
+    const details = [totalNew > 0 ? `${totalNew} nuevas` : null, totalPending > 0 ? `${totalPending} pendientes` : null, totalOverdue > 0 ? `${totalOverdue} vencidas` : null].filter(Boolean).join(" | ") || "Sin novedades";
+    const subject = scanAlert
+      ? `⚠️ ALERTA scan - Resumen diario (${dateFormatted}) Forest Bills`
+      : `Resumen diario (${dateFormatted}) Forest Bills - ${details}`;
+    const htmlBody = buildEmailHTML(summaries, scanAlert);
 
     let sent = 0, failed = 0, firstError = null;
     for (const recipient of RECIPIENTS) {
