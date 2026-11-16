@@ -106,7 +106,9 @@ function pdfSkipReason(pdf, invoiceOnlySenders) {
   if (fn.includes('signature') || fn.includes('logo') || fn.includes('banner')) return 'filename looks like signature/logo/banner';
   if (subj.includes('customer statement') || subj.includes('statement of account') || fn.includes('statement')) return 'statement, not an invoice';
   if (SKIP_PATTERNS.some(p => fn.includes(p))) return 'delivery/packing document';
-  if (invoiceOnlySenders.some(s => from.includes(s)) && !fn.includes('invoice')) return 'sender requires "invoice" in the filename';
+  // "factuur"/"factura" count as invoice filenames (Molenbergnatie's platform
+  // sends "Factuur_VFxx.pdf" invoices but also payment-evidence PDFs we skip)
+  if (invoiceOnlySenders.some(s => from.includes(s)) && !/invoice|factuur|factura/.test(fn)) return 'sender requires "invoice" in the filename';
   return null;
 }
 
@@ -160,7 +162,7 @@ async function scanCompany(co) {
   const allEmails = [...config.vendorEmails, ...dynamicEmails, ...systemOverrideEmails];
   if (!allEmails.length) return { company: co, invoices: [], saved: 0, skipped: 0, message: "No vendors" };
 
-  const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', ...dynamicInvoiceOnly];
+  const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', 'ls4b.be', ...dynamicInvoiceOnly];
 
   const query = buildQuery(allEmails, env.startDate, co);
   const searchRes = await gmail.users.messages.list({ userId: "me", q: query, maxResults: 20 });
@@ -216,7 +218,7 @@ async function diagnoseSearch(co, qraw) {
   const dynamicInvoiceOnly = (dynamicResult || []).filter(v => v.active && v.options?.invoice_only_filename).flatMap(v => v.emails || []);
   const systemOverrideEmails = Object.values(overrideResult || {}).flat();
   const allEmails = [...config.vendorEmails, ...dynamicEmails, ...systemOverrideEmails];
-  const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', ...dynamicInvoiceOnly];
+  const invoiceOnlySenders = ['agcs.uk.com', 'shippgl.com', 'ls4b.be', ...dynamicInvoiceOnly];
 
   const labelId = await getOrCreateLabel(gmail, doneLabelName(co));
   const after = scanAfterDate(env.startDate);
@@ -409,3 +411,6 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, results, message: `Scanned ${results.length} companies` }) };
   } catch (err) { return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) }; }
 };
+
+// Exported for tests
+exports.pdfSkipReason = pdfSkipReason;

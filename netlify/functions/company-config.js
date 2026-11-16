@@ -127,6 +127,7 @@ Return ONLY valid JSON:
       "ackie@agcs.uk.com",
       "davidm@agcs.uk.com",
       "e-invoicing.sk@raben-group.com",
+      "noreply@ls4b.be",
     ],
 
     vendorAliases: {
@@ -151,10 +152,15 @@ Return ONLY valid JSON:
       "mainfreight s.r.l":                    "Mainfreight S.R.L.",
       "mainfreight srl":                      "Mainfreight S.R.L.",
       "mainfreight":                          "Mainfreight S.R.L.",
+      "molenbergnatie españa sl":             "Molenbergnatie España SL",
+      "molenbergnatie españa s.l.":           "Molenbergnatie España SL",
+      "molenbergnatie espana sl":             "Molenbergnatie España SL",
+      "molenbergnatie españa":                "Molenbergnatie España SL",
+      "molenbergnatie":                       "Molenbergnatie España SL",
     },
 
     vendorFilter: [
-      "vollers", "agc", "commodity store", "raben", "inxpress", "mainfreight",
+      "vollers", "agc", "commodity store", "raben", "inxpress", "mainfreight", "molenbergnatie",
     ],
 
     // Hardcoded vendor currencies — overrides whatever Claude extracts
@@ -235,7 +241,20 @@ VENDOR RULES:
    - Invoice number format: 7126006034, 7127000256, etc.
    - Payment terms: 7 days from invoice date.
 
-6. SPANISH VENDORS (any vendor with a Spanish address or NIF/CIF, invoice shows IVA):
+6. MOLENBERGNATIE ESPAÑA SL (Zona Franca Barcelona, VAT ES B60616174, "operated by llomar"):
+   Spanish coffee warehouse/terminal. Invoices titled "INVOICE" with number VFxx-xxxxxx,
+   a per-line VAT column (21 %) and a summary: Amount Excl. VAT | VAT % | VAT Amount | Amount Incl. VAT.
+   Follow rule 7 (SPANISH VENDORS): line amounts EXCLUDING IVA, tax_code "IVA 21%" on each
+   21% line, total_amount = Amount Incl. VAT.
+   Account mapping (combine lines sharing account AND tax_code into one line item):
+   - "Recepción, descarga y estiba", "Recargo combustible" → "Shipping and delivery expense:Container Carry out cost"
+   - "Transporte desde el puerto a MBN" → "Shipping and delivery expense"
+   - "Customs Clearance", "Redacción Certificado Salud", DUA/customs lines → "Clearance"
+   - "Clasificación" → "Shipping and delivery expense:Handling & Loadout"
+   - Almacenaje / warehouse rent → "Storage"
+   Verify: the sum of all line amounts must equal Amount Excl. VAT.
+
+7. SPANISH VENDORS (any vendor with a Spanish address or NIF/CIF, invoice shows IVA):
    Spanish invoices show Base Imponible + IVA (21%, 10% or 4%) + Total.
    - Use the amount EXCLUDING IVA (base imponible) for each line item, NOT the total.
    - For each line item include a "tax_code" field with the IVA rate shown:
@@ -260,7 +279,7 @@ Return ONLY valid JSON:
 
 For ANY invoice with more than ~10 individual charge lines going to one account, prefer transcribing the individual amounts into that line item's "amounts" array (with "amount": 0) instead of adding them yourself — the system sums the array. For simple invoices just set "amount" directly and omit "amounts".
 
-The tax_code field is ONLY for Spanish vendors with IVA (rule 6). For all other vendors set tax_code to null or omit it.
+The tax_code field is ONLY for Spanish vendors with IVA (rules 6 and 7). For all other vendors set tax_code to null or omit it.
 
 IMPORTANT: For GBP invoices, set currency to "GBP". The exchange_rate field is the GBP to EUR rate (e.g. 1.17 means 1 GBP = 1.17 EUR). If the invoice does not state an exchange rate, set exchange_rate to null and the system will use 1 as default.`,
   },
