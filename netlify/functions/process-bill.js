@@ -56,6 +56,19 @@ function fileBlock(doc) {
     : { type: "document", source: { type: "base64", media_type: "application/pdf", data: doc.base64 } };
 }
 
+// ─── Background extraction jobs ───────────────────────────────────────────────
+// Long invoices (Vollers outbound, 6+ pages) exceed Netlify's 26s sync limit,
+// especially when the totals check triggers a corrective retry. The app
+// enqueues a job here; process-bill-background (15-min limit) runs the same
+// extraction and writes the result into the job blob, which the app polls via
+// GET ?job=<id>. The finished job drops the PDF payload so blobs stay small.
+function getJobStore() {
+  const siteID = process.env.NETLIFY_SITE_ID, token = process.env.NETLIFY_AUTH_TOKEN;
+  if (!siteID || !token) throw new Error("NETLIFY_SITE_ID or NETLIFY_AUTH_TOKEN not set");
+  return getStore({ name: "forest-bills", siteID, token, consistency: "strong" });
+}
+const validJobId = id => /^[\w.-]{1,80}$/.test(id || "");
+
 // ─── QB Helpers ───────────────────────────────────────────────────────────────
 async function findOrCreateVendor(name, token, realmId, baseUrl) {
   const base = `${baseUrl}/v3/company/${realmId}`;
@@ -305,17 +318,29 @@ function sanitizeOverride(o) {
 
 // ─── HANDLER ──────────────────────────────────────────────────────────────────
 exports.handler = async (event) => {
-  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-API-Key", "Access-Control-Allow-Methods": "POST, OPTIONS", "Content-Type": "application/json" };
+  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-API-Key", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Content-Type": "application/json" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "" };
 
   const { checkAuth } = require("./auth");
   const authFail = checkAuth(event);
   if (authFail) return authFail;
 
+  // Poll a background extraction job's result
+  if (event.httpMethod === "GET") {
+    try {
+      const jobId = (event.queryStringParameters || {}).job || "";
+      if (!validJobId(jobId)) return { statusCode: 400, headers, body: JSON.stringify({ error: "job parameter required" }) };
+      const job = await getJobStore().get(`extract-job-${jobId}`, { type: "json" }).catch(() => null);
+      if (!job) return { statusCode: 404, headers, body: JSON.stringify({ error: "Job not found" }) };
+      const { payload, ...publicJob } = job;
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, job: publicJob }) };
+    } catch (e) { return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }; }
+  }
+
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method not allowed" };
 
   try {
-    const { pdf_base64, filename, mode, company, extract_only, vendor_hint, extracted_override, allow_unbalanced } = JSON.parse(event.body);
+    const { pdf_base64, filename, mode, company, extract_only, vendor_hint, extracted_override, allow_unbalanced, job_id, extract_mode } = JSON.parse(event.body);
     if (!pdf_base64) return { statusCode: 400, headers, body: JSON.stringify({ error: "No PDF provided" }) };
 
     const config = getCompanyConfig(company);
@@ -329,6 +354,25 @@ exports.handler = async (event) => {
       const friendly = UPLOAD_ERRORS[e.message];
       if (friendly) return { statusCode: 400, headers, body: JSON.stringify({ error: friendly, filename }) };
       throw e;
+    }
+
+    // Enqueue a background extraction: store the job, kick the background
+    // worker (its invocation returns 202 immediately), and let the app poll.
+    // prepareDocument already ran above, so corrupt uploads still fail fast
+    // here with their clear message instead of inside the job.
+    if (mode === "enqueue") {
+      if (!validJobId(job_id)) return { statusCode: 400, headers, body: JSON.stringify({ error: "job_id required (letters, digits, ._- up to 80 chars)" }) };
+      await getJobStore().setJSON(`extract-job-${job_id}`, {
+        status: "queued", queued_at: new Date().toISOString(),
+        payload: { pdf_base64, filename, company, vendor_hint, mode: extract_mode === "statement" ? "statement" : "preview" },
+      });
+      const host = event.headers?.host || event.headers?.Host;
+      const trig = await fetch(`https://${host}/.netlify/functions/process-bill-background`, {
+        method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": process.env.FOREST_API_KEY || "" },
+        body: JSON.stringify({ job_id }),
+      });
+      if (!trig.ok && trig.status !== 202) throw new Error(`Background worker trigger failed: HTTP ${trig.status}`);
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, job_id }) };
     }
 
     // Statement extraction mode — different prompt, no QB push
